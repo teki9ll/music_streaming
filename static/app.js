@@ -224,6 +224,9 @@ class MusicRoomClient {
         }
 
         if (this.socket && this.socket.connected) {
+            // Set username locally
+            this.username = username;
+
             this.socket.emit('join_room', {
                 username,
                 room: roomName,
@@ -233,7 +236,7 @@ class MusicRoomClient {
             this.showNotification('Not connected to server', 'error');
         }
 
-        this.hideModal('joinRoom');
+        // Don't hide modal yet - wait for server response
     }
 
     // Socket.io Connection and Events
@@ -367,6 +370,12 @@ class MusicRoomClient {
         this.isHost = roomData.is_host;
         this.hostUsername = roomData.host_username;
 
+        // Close join modal if it's open
+        this.hideModal('joinRoom');
+
+        // Switch to room screen
+        this.switchToRoomScreen();
+
         // Update UI with room state
         this.updateRoomInfo();
         this.updateHostUI();
@@ -376,6 +385,9 @@ class MusicRoomClient {
             document.getElementById('songList').children[0].classList.contains('loading-placeholder')) {
             this.loadSongs();
         }
+
+        // Show success notification
+        this.showNotification(`Successfully joined room: ${this.currentRoom}`, 'success');
     }
 
     handleRoomsUpdate(rooms) {
@@ -550,8 +562,11 @@ class MusicRoomClient {
                     <div class="song-artist">${this.getSongArtist(song)}</div>
                 </div>
                 <div class="song-duration">
-                    <button class="spotify-btn spotify-btn-secondary" onclick="event.stopPropagation(); musicRoom.addToQueue('${song}')">
-                        Add
+                    <button class="spotify-btn spotify-btn-primary play-btn" onclick="event.stopPropagation(); musicRoom.playSong('${song}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Play
                     </button>
                 </div>
             </div>
@@ -578,22 +593,51 @@ class MusicRoomClient {
             return;
         }
 
+        this.playSong(song);
+    }
+
+    playSong(song) {
+        if (!this.isHost) {
+            this.showNotification('Only the host can control playback', 'warning');
+            return;
+        }
+
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
+
         this.currentSong = song;
         this.loadSong(song);
 
+        // Send control event to server with proper structure
         if (this.socket && this.socket.connected) {
             this.socket.emit('control', {
-                type: 'song',
-                data: song
+                room: this.currentRoom,
+                action: 'load',
+                song: song,
+                time: 0
+            });
+
+            // Auto-start playing
+            this.socket.emit('control', {
+                room: this.currentRoom,
+                action: 'play',
+                song: song,
+                time: 0
             });
         }
 
         this.updateNowPlaying(song);
         this.highlightCurrentSong(song);
+        this.showNotification(`Now playing: ${this.getSongDisplayName(song)}`, 'success');
     }
 
     loadSong(song) {
+        // Configure for streaming instead of downloading
         this.player.src = `/music/${encodeURIComponent(song)}`;
+        this.player.preload = 'none'; // Don't preload, stream on demand
+        this.player.crossOrigin = 'anonymous'; // Enable streaming
         this.player.load();
     }
 
@@ -630,6 +674,11 @@ class MusicRoomClient {
     }
 
     play() {
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
+
         if (this.player.src && this.player.readyState >= 2) {
             this.player.play();
             this.isPlaying = true;
@@ -637,10 +686,10 @@ class MusicRoomClient {
 
             if (this.socket && this.socket.connected) {
                 this.socket.emit('control', {
-                    type: 'play',
-                    data: {
-                        time: this.currentTime
-                    }
+                    room: this.currentRoom,
+                    action: 'play',
+                    song: this.currentSong,
+                    time: this.currentTime
                 });
             }
         } else {
@@ -649,22 +698,31 @@ class MusicRoomClient {
     }
 
     pause() {
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
+
         this.player.pause();
         this.isPlaying = false;
         this.updatePlayPauseButton();
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('control', {
-                type: 'pause',
-                data: {
-                    time: this.currentTime
-                }
+                room: this.currentRoom,
+                action: 'pause',
+                song: this.currentSong,
+                time: this.currentTime
             });
         }
     }
 
     stop() {
         if (!this.isHost) return;
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
 
         this.player.pause();
         this.player.currentTime = 0;
@@ -675,30 +733,40 @@ class MusicRoomClient {
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('control', {
-                type: 'stop',
-                data: null
+                room: this.currentRoom,
+                action: 'stop',
+                song: this.currentSong,
+                time: 0
             });
         }
     }
 
     seek(seconds) {
         if (!this.isHost) return;
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
 
         const newTime = Math.max(0, Math.min(this.duration, this.currentTime + seconds));
         this.player.currentTime = newTime;
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('control', {
-                type: 'seek',
-                data: {
-                    time: newTime
-                }
+                room: this.currentRoom,
+                action: 'seek',
+                song: this.currentSong,
+                time: newTime
             });
         }
     }
 
     handleSeek(e) {
         if (!this.isHost) return;
+        if (!this.currentRoom) {
+            this.showNotification('You need to join a room first', 'warning');
+            return;
+        }
 
         const rect = e.currentTarget.getBoundingClientRect();
         const percent = (e.clientX - rect.left) / rect.width;
@@ -708,10 +776,10 @@ class MusicRoomClient {
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('control', {
-                type: 'seek',
-                data: {
-                    time: newTime
-                }
+                room: this.currentRoom,
+                action: 'seek',
+                song: this.currentSong,
+                time: newTime
             });
         }
     }

@@ -646,6 +646,40 @@ async def reject_host_transfer(sid, data):
     except Exception as e:
         logger.error(f"Error in reject_host_transfer for {sid}: {e}")
 
+# Custom music file handler for streaming
+@app.get("/music/{filename}")
+async def get_music_file(filename: str):
+    """Stream music files with proper headers for streaming."""
+    from fastapi.responses import FileResponse
+    import os
+    from pathlib import Path
+
+    file_path = Path("music") / filename
+
+    # Security check - ensure file is within music directory
+    try:
+        resolved_path = file_path.resolve()
+        music_dir = Path("music").resolve()
+        if not str(resolved_path).startswith(str(music_dir)):
+            raise HTTPException(status_code=403, detail="Access denied")
+    except:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Return file with streaming headers
+    return FileResponse(
+        path=str(file_path),
+        media_type="audio/mpeg",
+        filename=filename,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache",  # Prevent caching for real-time sync
+            "Content-Disposition": "inline",  # Force inline display, not download
+        }
+    )
+
 # Mount static files with optimized settings
 app.mount("/music", StaticFiles(directory="music"), name="music")
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
