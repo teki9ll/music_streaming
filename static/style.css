@@ -1,0 +1,11 @@
+body { font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:24px; }
+.container { max-width:900px; margin:0 auto; }
+.card { background:white; padding:16px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.06); margin-bottom:16px; }
+.hidden { display:none; }
+.songList { list-style:none; padding:0; margin:0; max-height:240px; overflow:auto; }
+.songList li { padding:8px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+.songList button { margin-left:8px; }
+.playerBox { margin-top:12px; }
+.controls button { margin-right:8px; }
+.roomHeader { display:flex; justify-content:space-between; margin-bottom:8px; }
+input { padding:8px; margin-right:8px; }
