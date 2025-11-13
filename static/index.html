@@ -14,12 +14,29 @@
       <input id="username" placeholder="Your name" autocomplete="off" />
       <input id="room" placeholder="Room name" value="lobby" autocomplete="off" />
       <button id="joinBtn">Join Room</button>
+
+      <div class="roomsSection">
+        <h3>Active Rooms</h3>
+        <div id="activeRooms">
+          <p>Loading active rooms...</p>
+        </div>
+      </div>
     </div>
 
     <div id="roomBox" class="card hidden">
       <div class="roomHeader">
-        <div>Room: <span id="roomName"></span></div>
-        <div>Users: <span id="userCount">0</span></div>
+        <div class="room-info-section">
+          <div>Room: <span id="roomName"></span></div>
+          <div class="host-info">
+            Host: <span id="hostName">None</span>
+            <span id="hostBadge" class="host-badge hidden">👑 HOST</span>
+          </div>
+        </div>
+        <div class="room-controls-section">
+          <div>Users: <span id="userCount">0</span></div>
+          <button id="hostBtn" class="btn btn-sm btn-secondary" onclick="requestHost()" style="display:none;">Make Me Host</button>
+          <button id="leaveBtn" onclick="leaveRoom()">Leave Room</button>
+        </div>
       </div>
 
       <div class="songListWrap">
@@ -39,6 +56,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Host Transfer Modal -->
+  <div id="hostModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>👑 Host Transfer Request</h3>
+      <p id="hostModalMessage"></p>
+      <div class="modal-buttons">
+        <button id="acceptHostBtn" class="btn btn-primary">Accept</button>
+        <button id="rejectHostBtn" class="btn btn-secondary">Reject</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Area -->
+  <div id="notificationArea"></div>
 
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script src="app.js"></script>
