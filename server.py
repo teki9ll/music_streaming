@@ -25,7 +25,7 @@ MUSIC_DIR = os.path.join(os.path.dirname(__file__), "music")
 # Data structures with better organization
 @dataclass
 class RoomState:
-    """Optimized room state with timestamps and host management."""
+    """Optimized room state with timestamps, host management, and password protection."""
     song: Optional[str] = None
     state: str = "stopped"  # playing, paused, stopped
     time: float = 0.0
@@ -33,11 +33,14 @@ class RoomState:
     users: Set[str] = None
     host_sid: Optional[str] = None  # Session ID of the current host
     host_username: Optional[str] = None  # Username of the current host
+    password: Optional[str] = None  # Room password (None for public rooms)
+    is_locked: bool = False  # Whether the room is locked with a password
 
     def __post_init__(self):
         if self.users is None:
             self.users = set()
         self.last_update = time.time()
+        self.is_locked = self.password is not None and len(self.password.strip()) > 0
 
     def is_host(self, sid: str) -> bool:
         """Check if a user is the host."""
@@ -121,7 +124,9 @@ async def broadcast_rooms_update():
                     "song": room_state.song,
                     "state": room_state.state,
                     "host_username": room_state.host_username,
-                    "last_update": room_state.last_update
+                    "last_update": room_state.last_update,
+                    "is_locked": room_state.is_locked,
+                    "has_password": room_state.is_locked
                 })
 
         await sio.emit("rooms_update", active_rooms)
@@ -167,7 +172,7 @@ async def get_songs():
 
 @app.get("/rooms")
 async def get_rooms():
-    """Return list of active rooms with user count and host information."""
+    """Return list of active rooms with user count, host information, and password status."""
     try:
         active_rooms = []
         for room_name, room_state in rooms.items():
@@ -178,7 +183,9 @@ async def get_rooms():
                     "song": room_state.song,
                     "state": room_state.state,
                     "host_username": room_state.host_username,
-                    "last_update": room_state.last_update
+                    "last_update": room_state.last_update,
+                    "is_locked": room_state.is_locked,
+                    "has_password": room_state.is_locked
                 })
         return JSONResponse(active_rooms)
     except Exception as e:
@@ -249,10 +256,11 @@ async def disconnect(sid):
 
 @sio.event
 async def join_room(sid, data):
-    """Optimized room joining with host management."""
+    """Optimized room joining with host management and password validation."""
     try:
         username = data.get("username", "anonymous").strip() or "anonymous"
         room = data.get("room", "default").strip() or "default"
+        password = data.get("password", "").strip()
 
         # Validate inputs
         if len(username) > 50:
@@ -260,40 +268,57 @@ async def join_room(sid, data):
         if len(room) > 50:
             room = room[:50]
 
+        # Check if room exists
+        if room not in rooms:
+            await sio.emit("join_error", {
+                "message": "Room not found",
+                "code": "room_not_found"
+            }, to=sid)
+            return
+
+        room_state = rooms[room]
+
+        # Check password protection
+        if room_state.is_locked and room_state.password != password:
+            await sio.emit("join_error", {
+                "message": "Invalid password",
+                "code": "invalid_password"
+            }, to=sid)
+            return
+
         # Store username for later use
         if sid in user_sessions:
             user_sessions[sid]["username"] = username
 
         await sio.enter_room(sid, room)
 
-        # Initialize room if needed
-        if room not in rooms:
-            rooms[room] = RoomState()
-
         # Add user to room
-        rooms[room].users.add(sid)
-        rooms[room].last_update = time.time()
+        room_state.users.add(sid)
+        room_state.last_update = time.time()
 
         # Assign host if room is empty
-        if rooms[room].host_sid is None:
-            rooms[room].set_host(sid, username)
+        if room_state.host_sid is None:
+            room_state.set_host(sid, username)
             logger.info(f"User {username} ({sid}) became host of room {room}")
 
         # Prepare room state for client
-        room_state = asdict(rooms[room])
-        room_state["users"] = list(rooms[room].users)
-        room_state["user_count"] = len(rooms[room].users)
-        room_state["is_host"] = rooms[room].is_host(sid)
-        room_state["host_username"] = rooms[room].host_username
+        room_data = asdict(room_state)
+        room_data["name"] = room  # Add room name
+        room_data["users"] = list(room_state.users)
+        room_data["user_count"] = len(room_state.users)
+        room_data["is_host"] = room_state.is_host(sid)
+        room_data["host_username"] = room_state.host_username
+        # Don't send password to clients
+        room_data.pop("password", None)
 
         # Send current state to joining user
-        await sio.emit("room_state", room_state, to=sid)
+        await sio.emit("room_state", room_data, to=sid)
 
         # Notify others
         await sio.emit("user_joined", {
             "username": username,
-            "user_count": len(rooms[room].users),
-            "host_username": rooms[room].host_username
+            "user_count": len(room_state.users),
+            "host_username": room_state.host_username
         }, room=room, skip_sid=sid)
 
         # Broadcast updates
@@ -308,6 +333,68 @@ async def join_room(sid, data):
     except Exception as e:
         logger.error(f"Error in join_room for {sid}: {e}")
         await sio.emit("error", {"message": "Failed to join room"}, to=sid)
+
+@sio.event
+async def create_room(sid, data):
+    """Create a new room with optional password protection."""
+    try:
+        username = data.get("username", "anonymous").strip() or "anonymous"
+        room = data.get("room", "new_room").strip() or "new_room"
+        password = data.get("password", "").strip()
+
+        # Validate inputs
+        if len(username) > 50:
+            username = username[:50]
+        if len(room) > 50:
+            room = room[:50]
+        if len(password) > 100:
+            password = password[:100]
+
+        # Check if room already exists
+        if room in rooms:
+            await sio.emit("create_error", {
+                "message": "Room already exists",
+                "code": "room_exists"
+            }, to=sid)
+            return
+
+        # Create new room
+        rooms[room] = RoomState(
+            password=password if password else None
+        )
+
+        # Store username
+        if sid in user_sessions:
+            user_sessions[sid]["username"] = username
+
+        # Make creator the host
+        rooms[room].set_host(sid, username)
+
+        await sio.enter_room(sid, room)
+        rooms[room].users.add(sid)
+        rooms[room].last_update = time.time()
+
+        logger.info(f"User {username} ({sid}) created and joined room {room} as host (locked: {rooms[room].is_locked})")
+
+        # Prepare room state for client
+        room_data = asdict(rooms[room])
+        room_data["name"] = room  # Add room name
+        room_data["users"] = list(rooms[room].users)
+        room_data["user_count"] = len(rooms[room].users)
+        room_data["is_host"] = True
+        room_data["host_username"] = rooms[room].host_username
+        # Don't send password to clients
+        room_data.pop("password", None)
+
+        # Send room state to creator
+        await sio.emit("room_created", room_data, to=sid)
+
+        # Broadcast room updates
+        await broadcast_rooms_update()
+
+    except Exception as e:
+        logger.error(f"Error in create_room for {sid}: {e}")
+        await sio.emit("error", {"message": "Failed to create room"}, to=sid)
 
 @sio.event
 async def leave_room(sid, data):

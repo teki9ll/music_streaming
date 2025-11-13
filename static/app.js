@@ -1,720 +1,942 @@
-// Optimized Music Streaming Client - Best Practices Implementation
-class MusicStreamClient {
-    constructor() {
-        this.socket = io({
-            transports: ['websocket', 'polling'],
-            upgrade: true,
-            rememberUpgrade: true,
-            timeout: 20000,
-            maxRetries: 3
-        });
+/**
+ * Spotify-Style Music Room Client
+ * Enhanced UI with room creation, password protection, and modern interface
+ */
 
-        this.currentRoom = null;
-        this.username = null;
+class MusicRoomClient {
+    constructor() {
+        // Core properties
+        this.socket = null;
         this.player = document.getElementById('player');
-        this.isConnected = false;
+        this.notificationArea = document.getElementById('notificationArea');
+
+        // User state
+        this.username = '';
+        this.currentRoom = '';
+        this.isHost = false;
+        this.hostUsername = '';
+        this.currentSong = null;
+
+        // UI State
+        this.currentScreen = 'welcome'; // welcome, room
+        this.activeRooms = [];
+
+        // Audio player state
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.duration = 0;
+
+        // Socket connection management
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
-        this.syncInterval = null;
-        this.lastSyncTime = 0;
+        this.reconnectDelay = 1000;
 
-        // Performance optimizations
-        this.updateThrottle = 100; // ms
-        this.syncIntervalTime = 5000; // ms
-        this.toleranceThreshold = 0.5; // seconds
-
-        // State management
-        this.localState = {
-            song: null,
-            state: 'stopped',
-            time: 0,
-            isPlaying: false
-        };
-
-        // Host management
-        this.isHost = false;
-        this.hostUsername = null;
-        this.pendingHostTransfer = null;
-
-        this.initializeEventListeners();
-        this.startPeriodicSync();
+        this.init();
     }
 
-    initializeEventListeners() {
-        // Socket events
-        this.socket.on('connect', () => this.handleConnect());
-        this.socket.on('disconnect', () => this.handleDisconnect());
-        this.socket.on('connect_error', (error) => this.handleConnectionError(error));
-
-        // Room events
-        this.socket.on('room_state', (data) => this.handleRoomState(data));
-        this.socket.on('update', (data) => this.handleUpdate(data));
-        this.socket.on('sync_response', (data) => this.handleSyncResponse(data));
-        this.socket.on('error', (data) => this.handleError(data));
-
-        // User events
-        this.socket.on('user_joined', (data) => this.handleUserJoined(data));
-        this.socket.on('user_left', (data) => this.handleUserLeft(data));
-        this.socket.on('user_count_update', (data) => this.handleUserCountUpdate(data));
-
-        // Room list events
-        this.socket.on('rooms_update', (rooms) => this.updateRoomsDisplay(rooms));
-
-        // Host management events
-        this.socket.on('host_changed', (data) => this.handleHostChanged(data));
-        this.socket.on('host_transfer_request', (data) => this.handleHostTransferRequest(data));
-        this.socket.on('host_granted', () => this.handleHostGranted());
-        this.socket.on('host_transfer_rejected', (data) => this.handleHostTransferRejected(data));
-
-        // Player events with optimization
-        this.setupPlayerEvents();
-
-        // UI events
-        this.setupUIEvents();
+    init() {
+        this.setupEventListeners();
+        this.connectSocket();
+        this.loadActiveRooms();
     }
 
-    setupPlayerEvents() {
-        // Throttled event handlers for better performance
-        let lastPlayEmit = 0;
-        let lastPauseEmit = 0;
-        let lastSeekEmit = 0;
+    setupEventListeners() {
+        // Navigation and modals
+        this.setupModalEventListeners();
 
-        this.player.addEventListener('loadedmetadata', () => {
-            this.logDebug(`Audio loaded: ${this.player.duration}s duration`);
-        });
-
-        this.player.addEventListener('canplay', () => {
-            this.logDebug('Audio can play');
-        });
-
-        this.player.addEventListener('waiting', () => {
-            this.logDebug('Audio buffering...');
-        });
-
-        this.player.addEventListener('stalled', () => {
-            this.logDebug('Audio stalled');
-        });
-
-        this.player.addEventListener('error', (e) => {
-            this.logError(`Audio error: ${e.message || 'Unknown error'}`);
-            this.showNotification('Error loading audio file', 'error');
-        });
-
-        // Throttled play/pause events
-        this.player.addEventListener('play', () => {
-            const now = Date.now();
-            if (now - lastPlayEmit > this.updateThrottle) {
-                this.localState.isPlaying = true;
-                this.control('play', {
-                    song: this.getCurrentSong(),
-                    time: this.player.currentTime
-                });
-                lastPlayEmit = now;
-            }
-        });
-
-        this.player.addEventListener('pause', () => {
-            const now = Date.now();
-            if (now - lastPauseEmit > this.updateThrottle && this.localState.isPlaying) {
-                this.localState.isPlaying = false;
-                this.control('pause', { time: this.player.currentTime });
-                lastPauseEmit = now;
-            }
-        });
-
-        // Throttled seek events
-        this.player.addEventListener('seeked', () => {
-            const now = Date.now();
-            if (now - lastSeekEmit > this.updateThrottle) {
-                this.control('seek', { time: this.player.currentTime });
-                lastSeekEmit = now;
-            }
-        });
-
-        // Time update for sync verification
-        this.player.addEventListener('timeupdate', () => {
-            if (this.localState.state === 'playing' && this.localState.isPlaying) {
-                this.verifySync();
-            }
-        });
-    }
-
-    setupUIEvents() {
-        // Room controls
-        document.getElementById('joinBtn').addEventListener('click', () => this.joinRoom());
-        document.getElementById('username').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinRoom();
-        });
-        document.getElementById('room').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinRoom();
-        });
+        // Room creation
+        document.getElementById('createRoomBtn').addEventListener('click', () => this.showCreateRoomModal());
+        document.getElementById('showJoinRoomBtn').addEventListener('click', () => this.showJoinRoomModal());
+        document.getElementById('createRoomFromListBtn').addEventListener('click', () => this.showCreateRoomModal());
 
         // Player controls
-        document.getElementById('playBtn').addEventListener('click', () => this.control('play'));
-        document.getElementById('pauseBtn').addEventListener('click', () => this.control('pause'));
-        document.getElementById('stopBtn').addEventListener('click', () => this.control('stop'));
-        document.getElementById('seekBack').addEventListener('click', () => this.seekBy(-10));
-        document.getElementById('seekFwd').addEventListener('click', () => this.seekBy(10));
+        this.setupPlayerControls();
 
-        // Room list refresh
-        setInterval(() => this.loadActiveRooms(), 30000); // Refresh every 30s
-
-        // Host transfer modal buttons
-        document.getElementById('acceptHostBtn').addEventListener('click', () => this.acceptHostTransfer());
-        document.getElementById('rejectHostBtn').addEventListener('click', () => this.rejectHostTransfer());
+        // Audio player events
+        this.setupAudioPlayer();
     }
 
-    // Connection handling
-    handleConnect() {
-        this.isConnected = true;
-        this.reconnectAttempts = 0;
-        this.logInfo('Connected to server');
-        this.hideNotification();
-        this.loadActiveRooms();
+    setupModalEventListeners() {
+        // Create Room Modal
+        const createModal = document.getElementById('createRoomModal');
+        document.getElementById('closeCreateModal').addEventListener('click', () => this.hideModal('createRoom'));
+        document.getElementById('cancelCreateRoom').addEventListener('click', () => this.hideModal('createRoom'));
+        document.getElementById('confirmCreateRoom').addEventListener('click', () => this.handleCreateRoom());
 
-        // If we were in a room, rejoin it
-        if (this.currentRoom && this.username) {
-            setTimeout(() => {
-                this.socket.emit('join_room', { username: this.username, room: this.currentRoom });
-            }, 100);
+        // Join Room Modal
+        const joinModal = document.getElementById('joinRoomModal');
+        document.getElementById('closeJoinModal').addEventListener('click', () => this.hideModal('joinRoom'));
+        document.getElementById('cancelJoinRoom').addEventListener('click', () => this.hideModal('joinRoom'));
+        document.getElementById('confirmJoinRoom').addEventListener('click', () => this.handleJoinRoom());
+
+        // Host Transfer Modal
+        const hostModal = document.getElementById('hostModal');
+        document.getElementById('acceptHostBtn').addEventListener('click', () => this.handleAcceptHostTransfer());
+        document.getElementById('rejectHostBtn').addEventListener('click', () => this.handleRejectHostTransfer());
+
+        // Password toggles
+        document.getElementById('toggleCreatePassword').addEventListener('click', () => this.togglePasswordVisibility('createRoomPassword'));
+        document.getElementById('toggleJoinPassword').addEventListener('click', () => this.togglePasswordVisibility('joinRoomPassword'));
+
+        // Room navigation
+        document.getElementById('backToHome').addEventListener('click', () => this.leaveRoom());
+
+        // Close modals on backdrop click
+        [createModal, joinModal, hostModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    // Handle different ID patterns
+                    let modalId = modal.id;
+                    if (modalId.includes('Modal')) {
+                        modalId = modalId.replace('Modal', '');
+                    }
+                    this.hideModal(modalId);
+                }
+            });
+        });
+    }
+
+    setupPlayerControls() {
+        const controls = {
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            seekBackBtn: document.getElementById('seekBackBtn'),
+            seekFwdBtn: document.getElementById('seekFwdBtn'),
+            repeatBtn: document.getElementById('repeatBtn'),
+            shuffleBtn: document.getElementById('shuffleBtn')
+        };
+
+        controls.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+        controls.seekBackBtn.addEventListener('click', () => this.seek(-10));
+        controls.seekFwdBtn.addEventListener('click', () => this.seek(10));
+        controls.repeatBtn.addEventListener('click', () => this.toggleRepeat());
+        controls.shuffleBtn.addEventListener('click', () => this.toggleShuffle());
+
+        // Progress bar
+        const progressContainer = document.querySelector('.progress-container');
+        progressContainer.addEventListener('click', (e) => this.handleSeek(e));
+    }
+
+    setupAudioPlayer() {
+        this.player.addEventListener('timeupdate', () => this.updateProgress());
+        this.player.addEventListener('loadedmetadata', () => this.onLoadedMetadata());
+        this.player.addEventListener('ended', () => this.onSongEnd());
+        this.player.addEventListener('error', (e) => this.onPlayerError(e));
+    }
+
+    // Modal Management
+    showModal(modalId) {
+        const modal = document.getElementById(modalId + 'Modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            // Clear previous input values
+            if (modalId === 'createRoom') {
+                document.getElementById('createUsername').value = '';
+                document.getElementById('createRoomName').value = '';
+                document.getElementById('createRoomPassword').value = '';
+            } else if (modalId === 'joinRoom') {
+                document.getElementById('joinUsername').value = '';
+                document.getElementById('joinRoomName').value = '';
+                document.getElementById('joinRoomPassword').value = '';
+                document.getElementById('joinPasswordGroup').style.display = 'none';
+            }
+            // Focus first input
+            const firstInput = modal.querySelector('input[type="text"]');
+            if (firstInput) {
+                firstInput.focus();
+            }
         }
     }
 
-    handleDisconnect() {
-        this.isConnected = false;
-        this.logInfo('Disconnected from server');
-        this.showNotification('Connection lost. Attempting to reconnect...', 'warning');
-        this.attemptReconnect();
+    hideModal(modalId) {
+        const modal = document.getElementById(modalId + 'Modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
 
-    handleConnectionError(error) {
-        this.logError(`Connection error: ${error.message}`);
-        this.showNotification('Connection error. Please check your internet connection.', 'error');
-    }
-
-    attemptReconnect() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            this.logInfo(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-            setTimeout(() => {
-                this.socket.connect();
-            }, Math.pow(2, this.reconnectAttempts) * 1000); // Exponential backoff
+    togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
         } else {
-            this.showNotification('Unable to reconnect. Please refresh the page.', 'error');
+            input.type = 'password';
         }
     }
 
-    // Room management
-    async joinRoom() {
-        const usernameInput = document.getElementById('username').value.trim();
-        const roomInput = document.getElementById('room').value.trim();
+    // Room Creation and Joining
+    showCreateRoomModal() {
+        this.showModal('createRoom');
+    }
 
-        if (!usernameInput) {
+    showJoinRoomModal() {
+        this.showModal('joinRoom');
+    }
+
+    async handleCreateRoom() {
+        const username = document.getElementById('createUsername').value.trim();
+        const roomName = document.getElementById('createRoomName').value.trim();
+        const password = document.getElementById('createRoomPassword').value;
+
+        if (!username) {
             this.showNotification('Please enter your name', 'warning');
-            document.getElementById('username').focus();
             return;
         }
 
-        this.username = usernameInput;
-        this.currentRoom = roomInput || 'lobby';
-
-        // Update UI
-        document.getElementById('roomName').innerText = this.currentRoom;
-        document.getElementById('joinBox').classList.add('hidden');
-        document.getElementById('roomBox').classList.remove('hidden');
-
-        // Join room
-        this.socket.emit('join_room', { username: this.username, room: this.currentRoom });
-
-        // Load songs
-        await this.loadSongs();
-
-        // Start sync verification
-        this.startPeriodicSync();
-    }
-
-    leaveRoom() {
-        if (this.currentRoom) {
-            this.socket.emit('leave_room', { room: this.currentRoom });
-            this.currentRoom = null;
-            this.localState = { song: null, state: 'stopped', time: 0, isPlaying: false };
-            this.isHost = false;
-            this.hostUsername = null;
-            this.pendingHostTransfer = null;
-
-            // Stop player
-            this.player.pause();
-            this.player.currentTime = 0;
-
-            // Update UI
-            document.getElementById('joinBox').classList.remove('hidden');
-            document.getElementById('roomBox').classList.add('hidden');
-            document.getElementById('userCount').innerText = '0';
-
-            // Stop sync
-            this.stopPeriodicSync();
-
-            // Refresh rooms list
-            this.loadActiveRooms();
+        if (!roomName) {
+            this.showNotification('Please enter a room name', 'warning');
+            return;
         }
-    }
 
-    // Host Management Functions
-    requestHost() {
-        if (!this.currentRoom) return;
-
-        this.socket.emit('request_host', { room: this.currentRoom });
-        this.logInfo(`Requesting host permissions in room ${this.currentRoom}`);
-    }
-
-    acceptHostTransfer() {
-        if (!this.pendingHostTransfer) return;
-
-        this.socket.emit('accept_host_transfer', {
-            room: this.currentRoom,
-            requester_sid: this.pendingHostTransfer.requester_sid
-        });
-
-        this.closeModal();
-        this.showNotification(`Host transferred to ${this.pendingHostTransfer.requester_username}`, 'info');
-        this.logInfo(`Accepted host transfer to ${this.pendingHostTransfer.requester_username}`);
-
-        this.pendingHostTransfer = null;
-    }
-
-    rejectHostTransfer() {
-        if (!this.pendingHostTransfer) return;
-
-        this.socket.emit('reject_host_transfer', {
-            room: this.currentRoom,
-            requester_sid: this.pendingHostTransfer.requester_sid
-        });
-
-        this.closeModal();
-        this.showNotification(`Rejected host transfer from ${this.pendingHostTransfer.requester_username}`, 'info');
-
-        this.pendingHostTransfer = null;
-    }
-
-    showHostTransferModal(requester) {
-        this.pendingHostTransfer = requester;
-
-        const modal = document.getElementById('hostModal');
-        const message = document.getElementById('hostModalMessage');
-
-        message.textContent = `${requester.requester_username} wants to become the host of this room. Do you accept?`;
-        modal.classList.remove('hidden');
-    }
-
-    closeModal() {
-        document.getElementById('hostModal').classList.add('hidden');
-        this.pendingHostTransfer = null;
-    }
-
-    updateHostUI(isHost, hostUsername) {
-        this.isHost = isHost;
-        this.hostUsername = hostUsername;
-
-        // Update host name display
-        document.getElementById('hostName').textContent = hostUsername || 'None';
-
-        // Update host badge
-        const hostBadge = document.getElementById('hostBadge');
-        const hostBtn = document.getElementById('hostBtn');
-
-        if (isHost) {
-            hostBadge.classList.remove('hidden');
-            hostBtn.style.display = 'none';
-            this.showNotification('👑 You are now the host!', 'success');
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('create_room', {
+                username,
+                room: roomName,
+                password
+            });
         } else {
-            hostBadge.classList.add('hidden');
-            hostBtn.style.display = 'block';
-            this.showNotification(`Host: ${hostUsername}`, 'info');
+            this.showNotification('Not connected to server', 'error');
         }
 
-        // Update player controls
-        this.updatePlayerControls();
+        this.hideModal('createRoom');
     }
 
-    updatePlayerControls() {
-        const controls = document.querySelectorAll('.controls button');
-        controls.forEach(button => {
-            // Don't disable the host button as it's handled separately
-            if (button.id === 'hostBtn') return;
+    async handleJoinRoom() {
+        const username = document.getElementById('joinUsername').value.trim();
+        const roomName = document.getElementById('joinRoomName').value.trim();
+        const password = document.getElementById('joinRoomPassword').value;
 
-            button.disabled = !this.isHost;
+        if (!username) {
+            this.showNotification('Please enter your name', 'warning');
+            return;
+        }
 
-            // Add visual indicator for disabled controls
-            if (!this.isHost) {
-                button.parentElement.classList.add('disabled-controls');
-            } else {
-                button.parentElement.classList.remove('disabled-controls');
+        if (!roomName) {
+            this.showNotification('Please enter a room name', 'warning');
+            return;
+        }
+
+        // Check if room is locked and password is required
+        const roomInfo = this.activeRooms.find(room => room.name === roomName);
+        if (roomInfo && roomInfo.is_locked && !password) {
+            document.getElementById('joinPasswordGroup').style.display = 'block';
+            this.showNotification('This room requires a password', 'warning');
+            return;
+        }
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('join_room', {
+                username,
+                room: roomName,
+                password
+            });
+        } else {
+            this.showNotification('Not connected to server', 'error');
+        }
+
+        this.hideModal('joinRoom');
+    }
+
+    // Socket.io Connection and Events
+    connectSocket() {
+        try {
+            this.socket = io({
+                timeout: 10000,
+                transports: ['websocket', 'polling']
+            });
+
+            this.setupSocketEvents();
+
+        } catch (error) {
+            console.error('Failed to connect to server:', error);
+            this.showNotification('Failed to connect to server', 'error');
+            this.scheduleReconnect();
+        }
+    }
+
+    setupSocketEvents() {
+        // Connection events
+        this.socket.on('connect', () => {
+            console.log('Connected to server');
+            this.reconnectAttempts = 0;
+            this.showNotification('Connected to server', 'info');
+            this.loadActiveRooms();
+        });
+
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.showNotification('Disconnected from server', 'warning');
+            this.scheduleReconnect();
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            this.showNotification('Failed to connect to server', 'error');
+            this.scheduleReconnect();
+        });
+
+        // Room events
+        this.socket.on('room_created', (roomData) => {
+            console.log('Room created:', roomData);
+            this.handleRoomCreated(roomData);
+        });
+
+        this.socket.on('room_state', (roomData) => {
+            console.log('Room state:', roomData);
+            this.handleRoomState(roomData);
+        });
+
+        this.socket.on('rooms_update', (rooms) => {
+            console.log('Active rooms update:', rooms);
+            this.handleRoomsUpdate(rooms);
+        });
+
+        // Error events
+        this.socket.on('create_error', (data) => {
+            console.error('Create room error:', data);
+            this.showNotification(data.message, 'error');
+        });
+
+        this.socket.on('join_error', (data) => {
+            console.error('Join room error:', data);
+            this.showNotification(data.message, 'error');
+        });
+
+        this.socket.on('error', (data) => {
+            console.error('Socket error:', data);
+            this.showNotification(data.message, 'error');
+        });
+
+        // User events
+        this.socket.on('user_joined', (data) => {
+            console.log('User joined:', data);
+            this.showNotification(`${data.username} joined the room`, 'info');
+        });
+
+        this.socket.on('user_left', (data) => {
+            console.log('User left:', data);
+            this.showNotification(`${data.username} left the room`, 'info');
+        });
+
+        // Music control events
+        this.setupMusicControlEvents();
+    }
+
+    setupMusicControlEvents() {
+        // Control events from other users
+        this.socket.on('control', (data) => {
+            this.handleRemoteControl(data);
+        });
+
+        // Host transfer events
+        this.socket.on('host_transfer_request', (data) => {
+            this.showHostTransferModal(data);
+        });
+
+        this.socket.on('host_transfer_accepted', () => {
+            this.isHost = false;
+            this.updateUI();
+            this.showNotification('Host transfer completed', 'info');
+        });
+
+        this.socket.on('host_transfer_rejected', (data) => {
+            this.showNotification(`Host transfer rejected by ${data.host_username}`, 'warning');
+        });
+
+        // Room sync
+        this.socket.on('sync_request', () => {
+            if (this.isPlaying && this.currentSong) {
+                this.sendSync();
             }
         });
     }
 
-    // Song management
+    // Room Management
+    handleRoomCreated(roomData) {
+        this.username = roomData.host_username;
+        this.currentRoom = roomData.name || 'Unknown Room'; // Use room name from data
+        this.isHost = roomData.is_host;
+        this.hostUsername = roomData.host_username;
+
+        this.switchToRoomScreen();
+        this.loadSongs();
+        this.showNotification(`Room "${this.currentRoom}" created successfully!`, 'success');
+    }
+
+    handleRoomState(roomData) {
+        this.currentRoom = roomData.name || this.currentRoom;
+        this.isHost = roomData.is_host;
+        this.hostUsername = roomData.host_username;
+
+        // Update UI with room state
+        this.updateRoomInfo();
+        this.updateHostUI();
+
+        // Load songs if not already loaded
+        if (document.getElementById('songList').children.length === 1 &&
+            document.getElementById('songList').children[0].classList.contains('loading-placeholder')) {
+            this.loadSongs();
+        }
+    }
+
+    handleRoomsUpdate(rooms) {
+        this.activeRooms = rooms;
+        this.renderActiveRooms();
+    }
+
+    renderActiveRooms() {
+        const container = document.getElementById('activeRooms');
+
+        if (this.activeRooms.length === 0) {
+            container.innerHTML = `
+                <div class="loading-placeholder">
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🎵</div>
+                        <p style="font-size: 18px; color: #b3b3b3; margin-bottom: 8px;">No active rooms</p>
+                        <p style="font-size: 14px; color: #666;">Be the first to create a room and start listening together!</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = this.activeRooms.map(room => `
+            <div class="room-item" data-room="${room.name}">
+                <div class="room-info">
+                    <h3>${room.name}</h3>
+                    <div class="room-meta">
+                        <span class="user-count">${room.user_count} users</span>
+                        ${room.is_locked ? '<span class="room-locked">🔒 Locked</span>' : ''}
+                    </div>
+                </div>
+                <button class="spotify-btn spotify-btn-secondary" onclick="musicRoom.quickJoinRoom('${room.name}')">
+                    Join
+                </button>
+            </div>
+        `).join('');
+    }
+
+    quickJoinRoom(roomName) {
+        document.getElementById('joinRoomName').value = roomName;
+
+        // Check if room requires password
+        const roomInfo = this.activeRooms.find(room => room.name === roomName);
+        if (roomInfo && roomInfo.is_locked) {
+            document.getElementById('joinPasswordGroup').style.display = 'block';
+        }
+
+        this.showModal('joinRoom');
+    }
+
+    // Screen Management
+    switchToRoomScreen() {
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        document.getElementById('roomScreen').classList.remove('hidden');
+        this.currentScreen = 'room';
+
+        // Update room info in header
+        this.updateRoomInfo();
+        this.updateHostUI();
+    }
+
+    switchToWelcomeScreen() {
+        document.getElementById('roomScreen').classList.add('hidden');
+        document.getElementById('welcomeScreen').classList.remove('hidden');
+        this.currentScreen = 'welcome';
+
+        // Reset state
+        this.currentRoom = '';
+        this.isHost = false;
+        this.hostUsername = '';
+        this.currentSong = null;
+        this.stopPlayback();
+    }
+
+    // UI Updates
+    updateRoomInfo() {
+        document.getElementById('currentRoomName').textContent = this.currentRoom || 'Room';
+        document.getElementById('userCount').textContent = `${this.activeRooms.find(r => r.name === this.currentRoom)?.user_count || 0} users`;
+    }
+
+    updateHostUI() {
+        const hostBadge = document.getElementById('hostBadge');
+        const makeHostBtn = document.getElementById('makeMeHostBtn');
+
+        if (this.isHost) {
+            hostBadge.classList.remove('hidden');
+            hostBadge.textContent = '👑 HOST';
+
+            if (makeHostBtn) {
+                makeHostBtn.classList.add('hidden');
+            }
+
+            this.enableControls();
+        } else {
+            hostBadge.classList.add('hidden');
+
+            if (makeHostBtn) {
+                makeHostBtn.classList.remove('hidden');
+            }
+
+            this.disableControls();
+        }
+    }
+
+    enableControls() {
+        const controls = ['playPauseBtn', 'seekBackBtn', 'seekFwdBtn', 'stopBtn', 'repeatBtn', 'shuffleBtn'];
+        controls.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('disabled-controls');
+            }
+        });
+    }
+
+    disableControls() {
+        const controls = ['playPauseBtn', 'seekBackBtn', 'seekFwdBtn', 'stopBtn', 'repeatBtn', 'shuffleBtn'];
+        controls.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('disabled-controls');
+            }
+        });
+    }
+
+    // Music Player Functions
     async loadSongs() {
         try {
             const response = await fetch('/songs');
-            if (!response.ok) throw new Error('Failed to load songs');
-
             const songs = await response.json();
-            const songList = document.getElementById('songList');
-
-            if (songs.length === 0) {
-                songList.innerHTML = '<li class="no-songs">No MP3 files found in music directory</li>';
-                return;
-            }
-
-            // Optimize rendering with document fragment
-            const fragment = document.createDocumentFragment();
-            songs.forEach(song => {
-                const li = document.createElement('li');
-                const escapedSong = this.escapeHtml(song);
-
-                li.innerHTML = `
-                    <span class="song-name">${escapedSong}</span>
-                    <div class="song-controls">
-                        <button onclick="musicClient.loadSong('${escapedSong}')" class="btn btn-secondary">Load</button>
-                        <button onclick="musicClient.playSong('${escapedSong}')" class="btn btn-primary">Play</button>
-                    </div>
-                `;
-                fragment.appendChild(li);
-            });
-
-            songList.innerHTML = '';
-            songList.appendChild(fragment);
-
+            this.renderSongs(songs);
         } catch (error) {
-            this.logError('Error loading songs:', error);
-            document.getElementById('songList').innerHTML = '<li class="error">Error loading songs. Please refresh.</li>';
+            console.error('Failed to load songs:', error);
+            this.showNotification('Failed to load songs', 'error');
+            document.getElementById('songList').innerHTML = `
+                <div class="loading-placeholder">
+                    <p>Failed to load songs</p>
+                </div>
+            `;
         }
     }
 
-    loadSong(song) {
-        this.logInfo(`Loading song: ${song}`);
-
-        // Update player source
-        const encodedSong = encodeURIComponent(song);
-        this.player.src = `/music/${encodedSong}`;
-        this.player.currentTime = 0;
-
-        // Update local state
-        this.localState.song = song;
-        this.localState.state = 'stopped';
-        this.localState.isPlaying = false;
-
-        // Sync with room
-        this.control('load', { song, time: 0 });
-    }
-
-    async playSong(song) {
-        this.logInfo(`Playing song: ${song}`);
-
-        // Load and play
-        await this.loadSong(song);
-        try {
-            await this.player.play();
-        } catch (error) {
-            this.logError('Error playing song:', error);
-            this.showNotification('Error playing song. Please try again.', 'error');
-        }
-    }
-
-    // Control functions
-    control(action, extras = {}) {
-        if (!this.currentRoom || !this.isConnected) return;
-
-        const payload = {
-            room: this.currentRoom,
-            action,
-            time: this.player.currentTime,
-            ...extras
-        };
-
-        this.socket.emit('control', payload);
-        this.logDebug(`Control: ${action}`, payload);
-    }
-
-    seekBy(delta) {
-        const newTime = Math.max(0, Math.min(this.player.duration || 0, this.player.currentTime + delta));
-        this.player.currentTime = newTime;
-    }
-
-    // Synchronization
-    startPeriodicSync() {
-        this.stopPeriodicSync(); // Clear any existing interval
-        this.syncInterval = setInterval(() => {
-            if (this.currentRoom && this.localState.state === 'playing') {
-                this.requestSync();
-            }
-        }, this.syncIntervalTime);
-    }
-
-    stopPeriodicSync() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
-            this.syncInterval = null;
-        }
-    }
-
-    requestSync() {
-        if (!this.currentRoom) return;
-
-        this.socket.emit('sync_request', { room: this.currentRoom });
-        this.lastSyncTime = Date.now();
-    }
-
-    verifySync() {
-        if (!this.currentRoom || this.localState.state !== 'playing') return;
-
-        const currentTime = this.player.currentTime;
-        const serverTime = this.localState.time || 0;
-        const timeDiff = Math.abs(currentTime - serverTime);
-
-        // If drift is too large, request sync
-        if (timeDiff > this.toleranceThreshold && Date.now() - this.lastSyncTime > 2000) {
-            this.logDebug(`Sync drift detected: ${timeDiff.toFixed(2)}s`);
-            this.requestSync();
-        }
-    }
-
-    // Event handlers
-    handleRoomState(data) {
-        this.logDebug('Received room state:', data);
-        this.applyState(data);
-
-        if (data.users) {
-            document.getElementById('userCount').innerText = data.users.length;
-        }
-
-        // Update host UI if host information is available
-        if (data.is_host !== undefined && data.host_username !== undefined) {
-            this.updateHostUI(data.is_host, data.host_username);
-        }
-    }
-
-    handleUpdate(data) {
-        this.logDebug('Received update:', data);
-        this.applyState(data);
-    }
-
-    handleSyncResponse(data) {
-        this.logDebug('Received sync response:', data);
-        this.applyState(data, true); // Force apply for sync
-    }
-
-    applyState(data, forceSync = false) {
-        if (!data) return;
-
-        try {
-            // Update song if different
-            if (data.song && data.song !== this.localState.song) {
-                const encodedSong = encodeURIComponent(data.song);
-                if (this.player.src.indexOf(encodedSong) === -1) {
-                    this.player.src = `/music/${encodedSong}`;
-                    this.logInfo(`Changed song to: ${data.song}`);
-                }
-                this.localState.song = data.song;
-            }
-
-            // Apply state changes
-            const currentState = data.state || 'stopped';
-            const targetTime = parseFloat(data.time || 0);
-
-            // Smooth transitions between states
-            switch (currentState) {
-                case 'playing':
-                    if (this.localState.state !== 'playing' || forceSync) {
-                        // Seek if time difference is significant
-                        if (Math.abs(this.player.currentTime - targetTime) > this.toleranceThreshold) {
-                            this.player.currentTime = targetTime;
-                        }
-
-                        // Attempt to play
-                        this.player.play().catch(error => {
-                            this.logError('Play error:', error);
-                        });
-                        this.localState.state = 'playing';
-                        this.localState.isPlaying = true;
-                    }
-                    break;
-
-                case 'paused':
-                    if (this.localState.state !== 'paused' || forceSync) {
-                        this.player.pause();
-                        if (Math.abs(this.player.currentTime - targetTime) > this.toleranceThreshold) {
-                            this.player.currentTime = targetTime;
-                        }
-                        this.localState.state = 'paused';
-                        this.localState.isPlaying = false;
-                    }
-                    break;
-
-                case 'stopped':
-                    if (this.localState.state !== 'stopped' || forceSync) {
-                        this.player.pause();
-                        this.player.currentTime = 0;
-                        this.localState.state = 'stopped';
-                        this.localState.isPlaying = false;
-                    }
-                    break;
-            }
-
-            // Update time reference
-            if (data.time !== undefined) {
-                this.localState.time = targetTime;
-            }
-
-        } catch (error) {
-            this.logError('Error applying state:', error);
-        }
-    }
-
-    // Room management
     async loadActiveRooms() {
         try {
             const response = await fetch('/rooms');
-            if (!response.ok) return;
-
             const rooms = await response.json();
-            this.updateRoomsDisplay(rooms);
+            this.activeRooms = rooms;
+            this.renderActiveRooms();
         } catch (error) {
-            this.logError('Error loading active rooms:', error);
+            console.error('Failed to load active rooms:', error);
         }
     }
 
-    updateRoomsDisplay(rooms) {
-        const container = document.getElementById('activeRooms');
+    renderSongs(songs) {
+        const container = document.getElementById('songList');
 
-        if (!rooms || rooms.length === 0) {
-            container.innerHTML = '<p class="no-rooms">No active rooms</p>';
+        if (songs.length === 0) {
+            container.innerHTML = `
+                <div class="loading-placeholder">
+                    <p>No songs available</p>
+                </div>
+            `;
             return;
         }
 
-        // Sort by user count (most active first)
-        rooms.sort((a, b) => b.user_count - a.user_count);
-
-        // Optimize rendering
-        const fragment = document.createDocumentFragment();
-        rooms.forEach(room => {
-            const roomDiv = document.createElement('div');
-            roomDiv.className = 'room-item';
-
-            const statusIndicator = room.state === 'playing' ? '🎵' : '⏸️';
-            const statusText = room.state === 'playing' ? 'Playing' : room.state === 'paused' ? 'Paused' : 'Stopped';
-
-            const hostInfo = room.host_username ? `👑 Host: ${this.escapeHtml(room.host_username)}` : '';
-            roomDiv.innerHTML = `
-                <div class="room-info">
-                    <div class="room-name">${this.escapeHtml(room.name)}</div>
-                    <div class="room-details">
-                        ${room.user_count} user${room.user_count !== 1 ? 's' : ''}
-                        ${statusIndicator} ${statusText}
-                        ${room.song ? ` • ${this.escapeHtml(room.song)}` : ''}
-                        ${hostInfo ? ` • ${hostInfo}` : ''}
-                    </div>
+        container.innerHTML = songs.map(song => `
+            <div class="song-item" data-song="${song}" onclick="musicRoom.selectSong('${song}')">
+                <div class="song-info">
+                    <div class="song-name">${this.getSongDisplayName(song)}</div>
+                    <div class="song-artist">${this.getSongArtist(song)}</div>
                 </div>
-                <button onclick="musicClient.joinSpecificRoom('${this.escapeHtml(room.name)}')" class="btn btn-sm">Join</button>
-            `;
-            fragment.appendChild(roomDiv);
+                <div class="song-duration">
+                    <button class="spotify-btn spotify-btn-secondary" onclick="event.stopPropagation(); musicRoom.addToQueue('${song}')">
+                        Add
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getSongDisplayName(song) {
+        // Extract song name from filename
+        return song.replace(/\.mp3$/i, '').replace(/_/g, ' ');
+    }
+
+    getSongArtist(song) {
+        // Try to extract artist from filename (common patterns)
+        const parts = song.replace(/\.mp3$/i, '').split(' - ');
+        if (parts.length > 1) {
+            return parts.slice(1).join(' - ');
+        }
+        return 'Unknown Artist';
+    }
+
+    selectSong(song) {
+        if (!this.isHost) {
+            this.showNotification('Only the host can select songs', 'warning');
+            return;
+        }
+
+        this.currentSong = song;
+        this.loadSong(song);
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'song',
+                data: song
+            });
+        }
+
+        this.updateNowPlaying(song);
+        this.highlightCurrentSong(song);
+    }
+
+    loadSong(song) {
+        this.player.src = `/music/${encodeURIComponent(song)}`;
+        this.player.load();
+    }
+
+    updateNowPlaying(song) {
+        document.getElementById('currentSongName').textContent = this.getSongDisplayName(song);
+        document.getElementById('currentArtist').textContent = this.getSongArtist(song);
+    }
+
+    highlightCurrentSong(song) {
+        // Remove previous highlight
+        document.querySelectorAll('.song-item').forEach(item => {
+            item.classList.remove('playing');
         });
 
-        container.innerHTML = '';
-        container.appendChild(fragment);
+        // Add highlight to current song
+        const currentSongItem = document.querySelector(`[data-song="${song}"]`);
+        if (currentSongItem) {
+            currentSongItem.classList.add('playing');
+        }
     }
 
-    joinSpecificRoom(roomName) {
-        document.getElementById('room').value = roomName;
-        const username = document.getElementById('username').value.trim();
+    // Player Controls
+    togglePlayPause() {
+        if (!this.isHost) {
+            this.showNotification('Only the host can control playback', 'warning');
+            return;
+        }
 
-        if (username) {
-            this.joinRoom();
+        if (this.isPlaying) {
+            this.pause();
         } else {
-            document.getElementById('username').focus();
-            this.showNotification('Please enter your name first', 'warning');
+            this.play();
         }
     }
 
-    // User event handlers
-    handleUserJoined(data) {
-        this.logInfo(`${data.username} joined the room`);
-        this.showNotification(`${data.username} joined the room`, 'info');
-    }
+    play() {
+        if (this.player.src && this.player.readyState >= 2) {
+            this.player.play();
+            this.isPlaying = true;
+            this.updatePlayPauseButton();
 
-    handleUserLeft(data) {
-        this.logInfo(`${data.username} left the room`);
-        this.showNotification(`${data.username} left the room`, 'info');
-    }
-
-    handleUserCountUpdate(data) {
-        const count = data.count || 0;
-        document.getElementById('userCount').innerText = count;
-    }
-
-    handleError(data) {
-        this.logError('Server error:', data);
-        this.showNotification(data.message || 'An error occurred', 'error');
-    }
-
-    // Host management event handlers
-    handleHostChanged(data) {
-        this.logInfo('Host changed:', data);
-        this.showNotification(`👑 Host changed to ${data.new_host}`, 'info');
-
-        // Update UI for current user
-        const isCurrentHost = data.new_host === this.username;
-        this.updateHostUI(isCurrentHost, data.new_host);
-    }
-
-    handleHostTransferRequest(data) {
-        this.logInfo('Host transfer request:', data);
-        this.showHostTransferModal(data);
-    }
-
-    handleHostGranted() {
-        this.logInfo('Host granted!');
-        this.updateHostUI(true, this.username);
-        this.showNotification('👑 You are now the host!', 'success');
-        this.closeModal();
-    }
-
-    handleHostTransferRejected(data) {
-        this.logInfo('Host transfer rejected:', data);
-        this.closeModal();
-        this.showNotification(`Host transfer rejected by ${data.host_username}`, 'warning');
-    }
-
-    // Utility functions
-    getCurrentSong() {
-        try {
-            const parts = this.player.src.split('/');
-            return decodeURIComponent(parts[parts.length - 1]);
-        } catch (e) {
-            return null;
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('control', {
+                    type: 'play',
+                    data: {
+                        time: this.currentTime
+                    }
+                });
+            }
+        } else {
+            this.showNotification('No song loaded', 'warning');
         }
     }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    pause() {
+        this.player.pause();
+        this.isPlaying = false;
+        this.updatePlayPauseButton();
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'pause',
+                data: {
+                    time: this.currentTime
+                }
+            });
+        }
     }
 
-    showNotification(message, type = 'info', duration = 3000) {
-        // Create notification element
+    stop() {
+        if (!this.isHost) return;
+
+        this.player.pause();
+        this.player.currentTime = 0;
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.updatePlayPauseButton();
+        this.updateProgress();
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'stop',
+                data: null
+            });
+        }
+    }
+
+    seek(seconds) {
+        if (!this.isHost) return;
+
+        const newTime = Math.max(0, Math.min(this.duration, this.currentTime + seconds));
+        this.player.currentTime = newTime;
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'seek',
+                data: {
+                    time: newTime
+                }
+            });
+        }
+    }
+
+    handleSeek(e) {
+        if (!this.isHost) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        const newTime = percent * this.duration;
+
+        this.player.currentTime = newTime;
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'seek',
+                data: {
+                    time: newTime
+                }
+            });
+        }
+    }
+
+    toggleRepeat() {
+        // Implementation for repeat functionality
+        this.showNotification('Repeat functionality not implemented yet', 'info');
+    }
+
+    toggleShuffle() {
+        // Implementation for shuffle functionality
+        this.showNotification('Shuffle functionality not implemented yet', 'info');
+    }
+
+    updatePlayPauseButton() {
+        const playIcon = document.querySelector('.play-icon');
+        const pauseIcon = document.querySelector('.pause-icon');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+
+        if (this.isPlaying) {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            playPauseBtn.innerHTML = pauseIcon.outerHTML;
+        } else {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            playPauseBtn.innerHTML = playIcon.outerHTML;
+        }
+    }
+
+    // Progress Updates
+    updateProgress() {
+        this.currentTime = this.player.currentTime;
+        this.duration = this.player.duration || 0;
+
+        const progressPercent = this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0;
+
+        document.getElementById('progressFill').style.width = `${progressPercent}%`;
+        document.getElementById('currentTime').textContent = this.formatTime(this.currentTime);
+        document.getElementById('totalTime').textContent = this.formatTime(this.duration);
+    }
+
+    formatTime(seconds) {
+        if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
+
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    onLoadedMetadata() {
+        this.duration = this.player.duration;
+        this.updateProgress();
+    }
+
+    onSongEnd() {
+        this.isPlaying = false;
+        this.updatePlayPauseButton();
+
+        // Auto-play next song or stop
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('control', {
+                type: 'stop',
+                data: null
+            });
+        }
+    }
+
+    onPlayerError(error) {
+        console.error('Player error:', error);
+        this.showNotification('Audio player error', 'error');
+    }
+
+    // Remote Control Handling
+    handleRemoteControl(data) {
+        switch (data.type) {
+            case 'play':
+                if (data.data && this.player.src) {
+                    this.player.currentTime = data.data.time || 0;
+                    this.player.play();
+                    this.isPlaying = true;
+                    this.updatePlayPauseButton();
+                }
+                break;
+
+            case 'pause':
+                this.player.pause();
+                this.isPlaying = false;
+                this.updatePlayPauseButton();
+                break;
+
+            case 'stop':
+                this.stop();
+                break;
+
+            case 'seek':
+                if (data.data && this.player.src) {
+                    this.player.currentTime = data.data.time;
+                }
+                break;
+
+            case 'song':
+                if (data.data) {
+                    this.currentSong = data.data;
+                    this.loadSong(data.data);
+                    this.updateNowPlaying(data.data);
+                    this.highlightCurrentSong(data.data);
+                }
+                break;
+        }
+    }
+
+    // Synchronization
+    sendSync() {
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('sync', {
+                song: this.currentSong,
+                state: this.isPlaying ? 'playing' : 'paused',
+                time: this.currentTime
+            });
+        }
+    }
+
+    // Host Transfer
+    showHostTransferModal(data) {
+        const modal = document.getElementById('hostModal');
+        const message = document.getElementById('hostModalMessage');
+
+        message.textContent = `${data.requester_username} wants to become the host. Do you accept?`;
+        modal.classList.remove('hidden');
+
+        // Store the request data for use in button handlers
+        this.currentHostRequest = data;
+    }
+
+    handleAcceptHostTransfer() {
+        if (!this.currentHostRequest || !this.socket) return;
+
+        this.socket.emit('accept_host_transfer', {
+            requester_sid: this.currentHostRequest.requester_sid,
+            room: this.currentHostRequest.room
+        });
+
+        this.hideModal('host');
+        this.currentHostRequest = null;
+        this.showNotification('Host transfer accepted', 'info');
+    }
+
+    handleRejectHostTransfer() {
+        if (!this.currentHostRequest || !this.socket) return;
+
+        this.socket.emit('reject_host_transfer', {
+            requester_sid: this.currentHostRequest.requester_sid,
+            room: this.currentHostRequest.room
+        });
+
+        this.hideModal('host');
+        this.currentHostRequest = null;
+        this.showNotification('Host transfer rejected', 'warning');
+    }
+
+    requestHost() {
+        if (!this.currentRoom) return;
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('request_host', { room: this.currentRoom });
+        }
+    }
+
+    // Room Management
+    leaveRoom() {
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('leave_room', { room: this.currentRoom });
+        }
+
+        this.stopPlayback();
+        this.switchToWelcomeScreen();
+    }
+
+    stopPlayback() {
+        this.player.pause();
+        this.player.src = '';
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.duration = 0;
+        this.currentSong = null;
+
+        this.updatePlayPauseButton();
+        this.updateProgress();
+        this.updateNowPlaying('No song playing');
+
+        // Clear song highlighting
+        document.querySelectorAll('.song-item').forEach(item => {
+            item.classList.remove('playing');
+        });
+    }
+
+    // Reconnection Logic
+    scheduleReconnect() {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectDelay *= 2; // Exponential backoff
+            setTimeout(() => {
+                this.reconnectAttempts++;
+                console.log(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+                this.connectSocket();
+            }, this.reconnectDelay);
+        } else {
+            this.showNotification('Unable to reconnect to server', 'error');
+        }
+    }
+
+    // Notifications
+    showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
 
-        // Add to page
-        document.body.appendChild(notification);
+        this.notificationArea.appendChild(notification);
 
-        // Animate in
-        setTimeout(() => notification.classList.add('show'), 10);
+        // Trigger animation
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
 
-        // Remove after duration
+        // Auto-remove after 5 seconds
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
@@ -722,80 +944,29 @@ class MusicStreamClient {
                     notification.parentNode.removeChild(notification);
                 }
             }, 300);
-        }, duration);
-    }
-
-    hideNotification() {
-        const notifications = document.querySelectorAll('.notification');
-        notifications.forEach(n => {
-            n.classList.remove('show');
-            setTimeout(() => {
-                if (n.parentNode) {
-                    n.parentNode.removeChild(n);
-                }
-            }, 300);
-        });
-    }
-
-    // Logging
-    logInfo(...args) {
-        console.log('[MusicClient]', ...args);
-    }
-
-    logDebug(...args) {
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            console.debug('[MusicClient]', ...args);
-        }
-    }
-
-    logError(...args) {
-        console.error('[MusicClient]', ...args);
+        }, 5000);
     }
 }
 
-// Initialize the client
-let musicClient;
-
-// Start the application when DOM is ready
+// Initialize the music room client when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    musicClient = new MusicStreamClient();
+    window.musicRoom = new MusicRoomClient();
+    console.log('Spotify-Style Music Room Client initialized');
+});
 
-    // Load initial rooms list
-    musicClient.loadActiveRooms();
-
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT') return;
-
-        switch(e.code) {
-            case 'Space':
-                e.preventDefault();
-                if (musicClient.localState.isPlaying) {
-                    musicClient.control('pause');
-                } else {
-                    musicClient.control('play');
-                }
-                break;
-            case 'ArrowLeft':
-                musicClient.seekBy(-5);
-                break;
-            case 'ArrowRight':
-                musicClient.seekBy(5);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                musicClient.player.volume = Math.min(1, musicClient.player.volume + 0.1);
-                break;
-            case 'ArrowDown':
-                e.preventDefault();
-                musicClient.player.volume = Math.max(0, musicClient.player.volume - 0.1);
-                break;
+// Handle page visibility changes
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && window.musicRoom) {
+        // Page is hidden, pause playback
+        if (window.musicRoom.isPlaying) {
+            window.musicRoom.pause();
         }
-    });
+    }
+});
 
-    // Optimize for mobile
-    if ('serviceWorker' in navigator) {
-        // We could add a service worker for caching here if needed
-        console.log('Service Worker support detected');
+// Handle beforeunload to ensure proper cleanup
+window.addEventListener('beforeunload', () => {
+    if (window.musicRoom && window.musicRoom.socket) {
+        window.musicRoom.socket.disconnect();
     }
 });
