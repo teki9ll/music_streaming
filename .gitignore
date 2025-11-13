@@ -54,7 +54,6 @@ Thumbs.db
 logs/
 
 # Music files (keep the directory but ignore the files)
-music/*.mp3
 music/*.wav
 music/*.flac
 music/*.aac
