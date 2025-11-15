@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Test - Simple Version</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #121212; color: white; }
+        .btn { padding: 15px 30px; margin: 10px; background: #1ed760; color: #121212; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn:hover { background: #1db954; transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; }
+        .form { background: #282828; padding: 20px; border-radius: 8px; margin: 10px 0; }
+        .hidden { display: none; }
+        input { padding: 10px; margin: 5px; border-radius: 4px; border: 1px solid #404040; background: #1a1a1a; color: white; }
+        .room-info { background: #282828; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        #console { background: #1a1a1a; padding: 10px; border-radius: 4px; height: 200px; overflow-y: scroll; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Remote Music Player - Button Test</h1>
+
+    <div id="landingPage">
+        <h2>Welcome to Remote Music Player</h2>
+        <p>Create or join a music room and listen together</p>
+
+        <div class="action-buttons">
+            <button id="createRoomBtn" class="btn" onclick="showCreateRoomForm()">
+                ➕ Create Room
+            </button>
+            <button id="joinRoomBtn" class="btn btn-secondary" onclick="showJoinRoomForm()">
+                🎧 Join Room
+            </button>
+        </div>
+
+        <!-- Create Room Form -->
+        <div id="createRoomForm" class="form hidden">
+            <h3>Create a New Room</h3>
+            <input type="text" id="roomNameInput" placeholder="Room Name" maxlength="30">
+            <input type="text" id="hostUsernameInput" placeholder="Your Username (Host)" maxlength="20">
+            <div>
+                <button onclick="createRoom()" class="btn">Create Room</button>
+                <button onclick="hideCreateRoomForm()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Join Room Form -->
+        <div id="joinRoomForm" class="form hidden">
+            <h3>Join a Room</h3>
+            <input type="text" id="roomIdInput" placeholder="Enter Room ID" maxlength="8">
+            <input type="text" id="usernameInput" placeholder="Your Username" maxlength="20">
+            <div>
+                <button onclick="joinRoom()" class="btn">Join</button>
+                <button onclick="hideJoinRoomForm()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Page -->
+    <div id="playerPage" class="hidden">
+        <div class="room-info">
+            <h2 id="roomName">Room Name</h2>
+            <p id="roomId">Room ID: ABCD1234</p>
+            <p id="userInfo">Username - Host</p>
+            <button onclick="leaveRoom()" class="btn btn-secondary">Leave Room</button>
+        </div>
+
+        <div class="form">
+            <h3>Connected Users</h3>
+            <div id="usersList">No users yet</div>
+            <div id="userCount">Users: 0</div>
+        </div>
+
+        <div class="form">
+            <h3>Music Library</h3>
+            <div id="musicLibrary">Loading music...</div>
+            <button onclick="playMusic()" class="btn">Play Test Music</button>
+        </div>
+    </div>
+
+    <!-- Console -->
+    <div class="form">
+        <h3>Debug Console</h3>
+        <button onclick="clearConsole()" class="btn btn-secondary">Clear</button>
+        <div id="console"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let currentRoom = null;
+        let currentUser = null;
+        let isHost = false;
+
+        // Console logging
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const consoleDiv = document.getElementById('console');
+            const div = document.createElement('div');
+            div.style.color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#868e96';
+            div.innerHTML = `[${timestamp}] ${message}`;
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        // Button functions
+        function showCreateRoomForm() {
+            log('🏠 Show Create Room Form clicked');
+            document.getElementById('createRoomForm').classList.remove('hidden');
+            document.getElementById('joinRoomForm').classList.add('hidden');
+        }
+
+        function showJoinRoomForm() {
+            log('🎧 Show Join Room Form clicked');
+            document.getElementById('joinRoomForm').classList.remove('hidden');
+            document.getElementById('createRoomForm').classList.add('hidden');
+        }
+
+        function hideCreateRoomForm() {
+            log('🙈 Hide Create Room Form');
+            document.getElementById('createRoomForm').classList.add('hidden');
+        }
+
+        function hideJoinRoomForm() {
+            log('🙈 Hide Join Room Form');
+            document.getElementById('joinRoomForm').classList.add('hidden');
+        }
+
+        // Room creation
+        async function createRoom() {
+            const roomName = document.getElementById('roomNameInput').value.trim();
+            const username = document.getElementById('hostUsernameInput').value.trim();
+
+            log(`🏠 Creating room: "${roomName}" by "${username}"`);
+
+            if (!roomName || !username) {
+                log('❌ Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: roomName, username })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Room created: ${data.roomId}`, 'success');
+
+                    currentRoom = {
+                        id: data.roomId,
+                        name: roomName
+                    };
+                    currentUser = {
+                        id: data.userId,
+                        username: username,
+                        isHost: true
+                    };
+                    isHost = true;
+
+                    connectSocket();
+                    setTimeout(() => joinRoomSocket(), 500);
+                    showPlayerPage();
+                } else {
+                    log(`❌ Room creation failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Room creation error: ${error.message}`, 'error');
+            }
+        }
+
+        // Room joining
+        async function joinRoom() {
+            const roomId = document.getElementById('roomIdInput').value.trim();
+            const username = document.getElementById('usernameInput').value.trim();
+
+            log(`🎧 Joining room: "${roomId}" as "${username}"`);
+
+            if (!roomId || !username) {
+                log('❌ Please fill in all fields', 'error');
+                return;
+            }
+
+            currentRoom = {
+                id: roomId,
+                name: `Room ${roomId}`
+            };
+            currentUser = {
+                id: null,
+                username: username,
+                isHost: false
+            };
+            isHost = false;
+
+            connectSocket();
+            setTimeout(() => joinRoomSocket(), 500);
+            showPlayerPage();
+        }
+
+        // Socket connection
+        function connectSocket() {
+            log('🔌 Connecting to server...');
+            socket = io();
+
+            socket.on('connect', () => {
+                log(`✅ Connected to server: ${socket.id}`, 'success');
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection error: ${error.message}`, 'error');
+            });
+
+            socket.on('users-updated', (users) => {
+                log(`👥 Users updated: ${users.length} users`);
+                updateUsersList(users);
+            });
+
+            socket.on('room-state', (data) => {
+                log(`📡 Room state received`);
+                if (data.currentTrack) {
+                    log(`🎵 Current track: ${data.currentTrack.originalName}`);
+                }
+            });
+
+            socket.on('user-joined', (data) => {
+                log(`👋 ${data.user.username} joined the room`);
+                updateUsersList(data.connectedUsers);
+            });
+
+            socket.on('user-left', (data) => {
+                log(`👋 ${data.user.username} left the room`);
+                updateUsersList(data.connectedUsers);
+            });
+
+            socket.on('error', (error) => {
+                log(`❌ Socket error: ${error.message}`, 'error');
+            });
+        }
+
+        function joinRoomSocket() {
+            if (!socket || !currentRoom) {
+                log('❌ Cannot join room - socket or room data missing', 'error');
+                return;
+            }
+
+            log(`🔌 Joining room: ${currentRoom.id}`);
+            socket.emit('join-room', {
+                roomId: currentRoom.id,
+                username: currentUser.username,
+                isHost: isHost
+            });
+        }
+
+        function leaveRoom() {
+            log('🚪 Leaving room');
+            if (socket) {
+                socket.disconnect();
+            }
+            showLandingPage();
+        }
+
+        function showPlayerPage() {
+            document.getElementById('landingPage').classList.add('hidden');
+            document.getElementById('playerPage').classList.remove('hidden');
+
+            document.getElementById('roomName').textContent = currentRoom.name;
+            document.getElementById('roomId').textContent = `Room ID: ${currentRoom.id}`;
+            document.getElementById('userInfo').textContent = `${currentUser.username} - ${isHost ? 'Host' : 'Listener'}`;
+        }
+
+        function showLandingPage() {
+            document.getElementById('landingPage').classList.remove('hidden');
+            document.getElementById('playerPage').classList.add('hidden');
+        }
+
+        function updateUsersList(users) {
+            const usersList = document.getElementById('usersList');
+            const userCount = document.getElementById('userCount');
+
+            usersList.innerHTML = '';
+            users.forEach(user => {
+                const div = document.createElement('div');
+                div.innerHTML = `${user.username} ${user.isHost ? '(Host)' : ''}`;
+                usersList.appendChild(div);
+            });
+            userCount.textContent = `Users: ${users.length}`;
+        }
+
+        // Music functions
+        async function loadMusic() {
+            try {
+                const response = await fetch('/api/music');
+                const music = await response.json();
+
+                const musicLibrary = document.getElementById('musicLibrary');
+                musicLibrary.innerHTML = '';
+
+                music.forEach((file, index) => {
+                    const div = document.createElement('div');
+                    div.style.padding = '10px';
+                    div.style.margin = '5px 0';
+                    div.style.background = '#1a1a1a';
+                    div.style.borderRadius = '4px';
+                    div.innerHTML = `${index + 1}. ${file.originalName}`;
+                    musicLibrary.appendChild(div);
+                });
+
+                log(`📁 Loaded ${music.length} music files`);
+            } catch (error) {
+                log(`❌ Failed to load music: ${error.message}`, 'error');
+            }
+        }
+
+        function playMusic() {
+            if (!isHost) {
+                log('❌ Only hosts can play music', 'error');
+                return;
+            }
+
+            log('🎵 Attempting to play music...');
+
+            // Get music files
+            fetch('/api/music')
+                .then(response => response.json())
+                .then(files => {
+                    if (files.length > 0) {
+                        const track = files[0];
+                        log(`🎵 Playing: ${track.originalName}`);
+
+                        // Emit play event to server
+                        socket.emit('play-track', {
+                            roomId: currentRoom.id,
+                            track: track,
+                            startTime: 0
+                        });
+                    } else {
+                        log('❌ No music files available', 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Failed to get music: ${error.message}`, 'error');
+                });
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            log('🚀 Page loaded');
+            loadMusic();
+        });
+    </script>
+</body>
+</html>

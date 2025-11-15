@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Global Music Room</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .left-panel, .right-panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .left-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .right-panel {
+            flex: 1;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .section h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3rem;
+        }
+        .username-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .username-form input {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+        }
+        .username-form input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            background: #FF6B6B;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #FF5252;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,107,107,0.4);
+        }
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .user-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .user-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .user-role {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .host-badge {
+            background: #FFD93D;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .music-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .music-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .music-item:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .music-item.playing {
+            background: rgba(76, 237, 196, 0.2);
+            border-color: #4ECDC4;
+        }
+        .music-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .music-info {
+            flex: 1;
+        }
+        .music-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .music-size {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        .play-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .play-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #4ECDC4;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .play-btn:hover {
+            background: #45B7B8;
+            transform: scale(1.1);
+        }
+        .play-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .timeline-container {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        .timeline {
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: #4ECDC4;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+        .seek-bar {
+            width: 100%;
+            height: 4px;
+            background: transparent;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        .seek-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #4ECDC4;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .seek-bar::-webkit-slider-thumb:hover {
+            background: #45B7B8;
+            transform: scale(1.2);
+        }
+        .seek-bar::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #4ECDC4;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        .seek-bar:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .seek-bar:disabled::-webkit-slider-thumb {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .seek-bar:disabled::-moz-range-thumb {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .volume-slider {
+            width: 100px;
+            height: 4px;
+            background: transparent;
+            outline: none;
+            cursor: pointer;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: #4ECDC4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            background: #4ECDC4;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        .log-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .log-time {
+            color: rgba(255,255,255,0.6);
+            font-weight: bold;
+        }
+        .log-message {
+            flex: 1;
+        }
+        .log-join { color: #4ECDC4; }
+        .log-leave { color: #FF6B6B; }
+        .log-music { color: #FFD93D; }
+        .log-system { color: #A8E6CF; }
+        .hidden { display: none !important; }
+        .current-user-info {
+            background: rgba(76, 237, 196, 0.2);
+            border: 1px solid #4ECDC4;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .current-user-info .username {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .current-user-info .user-id {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            font-family: monospace;
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .left-panel, .right-panel {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎵 Global Music Room</h1>
+        <p>Everyone is in the same room - just enter your username to join!</p>
+    </div>
+
+    <div id="usernamePrompt" class="main-container">
+        <div class="left-panel" style="margin: auto; max-width: 400px;">
+            <div class="section">
+                <h3>🎤 Join the Global Room</h3>
+                <div class="username-form">
+                    <input type="text" id="usernameInput" placeholder="Enter your username..." maxlength="20">
+                    <button class="btn" onclick="joinGlobalRoom()">Join Room</button>
+                </div>
+                <p style="text-align: center; opacity: 0.8; margin-top: 10px;">
+                    First user to join becomes the host!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="musicRoom" class="main-container hidden">
+        <div class="left-panel">
+            <div class="current-user-info">
+                <div class="username" id="currentUsername">-</div>
+                <div class="user-id" id="currentUserId">-</div>
+                <div id="currentUserRole" style="margin-top: 5px;">-</div>
+            </div>
+
+            <div class="section">
+                <h3>🎵 Music Library</h3>
+                <div class="music-list" id="musicList">
+                    <div style="text-align: center; padding: 20px; opacity: 0.7;">
+                        Loading music library...
+                    </div>
+                </div>
+                <div class="play-controls">
+                    <button class="play-btn" id="playBtn" onclick="togglePlay()" disabled>▶️</button>
+                    <div style="flex: 1;">
+                        <div id="currentTrack">
+                            <div style="font-weight: 600;">No track playing</div>
+                            <div style="font-size: 12px; opacity: 0.7;">Select a track to play</div>
+                        </div>
+                        <div class="timeline-container" id="timelineContainer" style="display: none;">
+                            <div class="timeline">
+                                <div class="progress-bar" id="progressBar">
+                                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                                </div>
+                                <div class="time-display">
+                                    <span id="currentTime">0:00</span>
+                                    <span id="duration">0:00</span>
+                                </div>
+                            </div>
+                            <input type="range" class="seek-bar" id="seekBar" min="0" max="100" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden audio element -->
+                <audio id="audioPlayer" style="display: none;"></audio>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="section">
+                <h3>👥 Connected Users (<span id="userCount">0</span>)</h3>
+                <div class="user-list" id="userList">
+                    <div style="text-align: center; padding: 20px; opacity: 0.7;">
+                        No users connected yet
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📋 Activity Log</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry log-system">
+                        <span class="log-time">[System]</span>
+                        <span class="log-message">Welcome to Global Music Room!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentUsername = '';
+        let currentUserId = '';
+        let isHost = false;
+        let currentTrack = null;
+        let isPlaying = false;
+        let audioPlayer = null;
+        let progressUpdateInterval = null;
+
+        // Add activity to shared log (for local UI updates that need to be broadcast)
+        function addSharedActivity(message, type = 'system') {
+            if (socket && socket.connected) {
+                // Only send client activities that the server doesn't track
+                socket.emit('client-activity', { message, type });
+            }
+        }
+
+        // Display activity in the log
+        function displayActivity(activity) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date(activity.timestamp).toLocaleTimeString();
+
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${activity.type}`;
+            logEntry.innerHTML = `
+                <span class="log-time">[${timestamp}]</span>
+                <span class="log-message">${activity.message}</span>
+            `;
+
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Join global room
+        function joinGlobalRoom() {
+            const usernameInput = document.getElementById('usernameInput');
+            const username = usernameInput.value.trim();
+
+            if (!username) {
+                return;
+            }
+
+            currentUsername = username;
+
+            // Connect to Socket.IO
+            socket = io();
+
+            socket.on('connect', () => {
+                currentUserId = socket.id;
+
+                // Join the default room
+                socket.emit('join-default-room', { username });
+            });
+
+            // Receive shared activity log updates
+            socket.on('activity-log', (activity) => {
+                displayActivity(activity);
+            });
+
+            // Receive activity history when joining
+            socket.on('activity-history', (history) => {
+                const logContainer = document.getElementById('logContainer');
+                logContainer.innerHTML = ''; // Clear existing welcome message
+
+                history.forEach(activity => {
+                    displayActivity(activity);
+                });
+            });
+
+            socket.on('room-state', (data) => {
+                console.log('Room state data:', data);
+
+                // Set host status from server response
+                if (data.isHost !== undefined) {
+                    isHost = data.isHost;
+                    console.log(`🎭 Host status received: ${isHost}`);
+                }
+
+                currentTrack = data.currentTrack;
+                isPlaying = data.isPlaying;
+
+                updateUI();
+                loadMusic();
+            });
+
+            socket.on('user-joined', (data) => {
+                updateUserList(data.connectedUsers);
+            });
+
+            socket.on('user-left', (data) => {
+                updateUserList(data.connectedUsers);
+            });
+
+            socket.on('users-updated', (users) => {
+                updateUserList(users);
+            });
+
+            socket.on('track-playing', (data) => {
+                isPlaying = data.isPlaying;
+
+                // Load track for synchronized playback
+                if (data.track) {
+                    loadTrackForSync(data.track, data.startTime || 0);
+
+                    // Play the track for all users
+                    if (audioPlayer) {
+                        audioPlayer.play().catch(error => {
+                            console.error('Sync play error:', error);
+                        });
+                    }
+                }
+
+                updateUI();
+            });
+
+            socket.on('track-paused', (data) => {
+                isPlaying = false;
+
+                // Pause audio for all users
+                if (audioPlayer) {
+                    audioPlayer.pause();
+                    if (data.currentTime !== undefined) {
+                        audioPlayer.currentTime = data.currentTime;
+                    }
+                }
+
+                updateUI();
+            });
+
+            socket.on('track-seeked', (data) => {
+                // Synchronize seeking for all users
+                if (audioPlayer && data.currentTime !== undefined) {
+                    audioPlayer.currentTime = data.currentTime;
+                }
+            });
+
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+            });
+
+            // Hide username prompt, show music room
+            document.getElementById('usernamePrompt').classList.add('hidden');
+            document.getElementById('musicRoom').classList.remove('hidden');
+        }
+
+        // Update user list
+        function updateUserList(users) {
+            const userList = document.getElementById('userList');
+            const userCount = document.getElementById('userCount');
+
+            userList.innerHTML = '';
+            userCount.textContent = users.length;
+
+            users.forEach(user => {
+                const userItem = document.createElement('div');
+                userItem.className = 'user-item';
+                userItem.innerHTML = `
+                    <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-info">
+                        <div class="user-name">${user.username}</div>
+                        <div class="user-role">
+                            ${user.isHost ? '<span class="host-badge">HOST</span>' : 'Listener'}
+                        </div>
+                    </div>
+                `;
+                userList.appendChild(userItem);
+            });
+        }
+
+        // Load music library
+        async function loadMusic() {
+            try {
+                const response = await fetch('/api/music');
+                const musicFiles = await response.json();
+
+                const musicList = document.getElementById('musicList');
+                musicList.innerHTML = '';
+
+                musicFiles.forEach((file, index) => {
+                    const musicItem = document.createElement('div');
+                    musicItem.className = 'music-item';
+                    musicItem.onclick = () => selectTrack(file);
+
+                    musicItem.innerHTML = `
+                        <div class="music-icon">🎵</div>
+                        <div class="music-info">
+                            <div class="music-title">${file.originalName}</div>
+                            <div class="music-size">${(file.size / 1024 / 1024).toFixed(1)} MB</div>
+                        </div>
+                    `;
+
+                    if (currentTrack && currentTrack.filename === file.filename) {
+                        musicItem.classList.add('playing');
+                    }
+
+                    musicList.appendChild(musicItem);
+                });
+
+                // Music loading is now handled by the server
+            } catch (error) {
+                console.error('Failed to load music:', error);
+            }
+        }
+
+        // Select track
+        function selectTrack(track) {
+            console.log(`🎵 Track clicked - isHost: ${isHost}, track: ${track.originalName}`);
+
+            if (!isHost) {
+                addSharedActivity('❌ Only hosts can select music', 'system');
+                return;
+            }
+
+            const wasPlaying = isPlaying; // Remember if something was playing
+            currentTrack = track;
+
+            // Load track into audio player (for host)
+            if (audioPlayer) {
+                audioPlayer.src = track.url;
+                audioPlayer.load();
+
+                // If something was playing before, automatically start the new track
+                if (wasPlaying) {
+                    audioPlayer.play().then(() => {
+                        addSharedActivity(`🎵 Switched to: ${track.originalName}`, 'music');
+                        socket.emit('play-track', {
+                            track: currentTrack,
+                            startTime: 0
+                        });
+                    }).catch(error => {
+                        console.error('Audio play error:', error);
+                        addSharedActivity(`❌ Failed to play audio: ${error.message}`, 'system');
+                    });
+                } else {
+                    addSharedActivity(`🎵 Selected track: ${track.originalName}`, 'music');
+                }
+            }
+
+            updateUI();
+        }
+
+        // Load track for synchronized playback (called when receiving track-playing event)
+        function loadTrackForSync(track, startTime = 0) {
+            currentTrack = track;
+
+            if (audioPlayer) {
+                audioPlayer.src = track.url;
+                audioPlayer.load();
+                audioPlayer.currentTime = startTime;
+            }
+
+            updateUI();
+        }
+
+        // Toggle play/pause
+        function togglePlay() {
+            if (!isHost) {
+                return;
+            }
+
+            if (!currentTrack) {
+                return;
+            }
+
+            if (isPlaying) {
+                // Pause audio
+                if (audioPlayer) {
+                    audioPlayer.pause();
+                }
+                socket.emit('pause-track', { currentTime: audioPlayer ? audioPlayer.currentTime : 0 });
+            } else {
+                // Play audio
+                if (audioPlayer) {
+                    audioPlayer.play().catch(error => {
+                        console.error('Audio play error:', error);
+                        addSharedActivity(`❌ Failed to play audio: ${error.message}`, 'system');
+                    });
+                }
+                socket.emit('play-track', {
+                    track: currentTrack,
+                    startTime: audioPlayer ? audioPlayer.currentTime : 0
+                });
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            // Update current user info
+            document.getElementById('currentUsername').textContent = currentUsername;
+            document.getElementById('currentUserId').textContent = `ID: ${currentUserId.substring(0, 8)}...`;
+            document.getElementById('currentUserRole').textContent = isHost ? '👑 HOST - You can control music' : '🎧 Listener';
+
+            // Update play button
+            const playBtn = document.getElementById('playBtn');
+            playBtn.disabled = !isHost || !currentTrack;
+            playBtn.innerHTML = isPlaying ? '⏸️' : '▶️';
+
+            // Update timeline visibility
+            const timelineContainer = document.getElementById('timelineContainer');
+            if (currentTrack) {
+                timelineContainer.style.display = 'block';
+            } else {
+                timelineContainer.style.display = 'none';
+            }
+
+            // Enable/disable seek bar based on host status
+            const seekBar = document.getElementById('seekBar');
+            seekBar.disabled = !isHost;
+
+            // Update current track display
+            const currentTrackDiv = document.getElementById('currentTrack');
+            if (currentTrack) {
+                currentTrackDiv.innerHTML = `
+                    <div style="font-weight: 600;">${currentTrack.originalName}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">
+                        ${isPlaying ? 'Now Playing' : 'Selected'} • ${isHost ? 'Click play to start' : 'Waiting for host to play'}
+                    </div>
+                `;
+            } else {
+                currentTrackDiv.innerHTML = `
+                    <div style="font-weight: 600;">No track playing</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Select a track to play</div>
+                `;
+            }
+        }
+
+        // Handle Enter key in username input
+        document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinGlobalRoom();
+            }
+        });
+
+        // Initialize audio player
+        function initializeAudioPlayer() {
+            audioPlayer = document.getElementById('audioPlayer');
+
+            // Audio event listeners
+            audioPlayer.addEventListener('loadedmetadata', () => {
+                updateDuration();
+            });
+
+            audioPlayer.addEventListener('timeupdate', () => {
+                updateProgress();
+            });
+
+            audioPlayer.addEventListener('play', () => {
+                isPlaying = true;
+                startProgressUpdate();
+                updateUI();
+            });
+
+            audioPlayer.addEventListener('pause', () => {
+                isPlaying = false;
+                stopProgressUpdate();
+                updateUI();
+            });
+
+            audioPlayer.addEventListener('loadeddata', () => {
+                // Audio is loaded and ready to play
+                updateDuration();
+            });
+
+            audioPlayer.addEventListener('ended', () => {
+                isPlaying = false;
+                stopProgressUpdate();
+                updateUI();
+                addSharedActivity(`🏁 Finished playing: ${currentTrack?.originalName}`, 'music');
+            });
+
+            // Seek bar event listener
+            const seekBar = document.getElementById('seekBar');
+            seekBar.addEventListener('input', (e) => {
+                if (!isHost) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (audioPlayer && audioPlayer.duration) {
+                    const seekTime = (e.target.value / 100) * audioPlayer.duration;
+                    audioPlayer.currentTime = seekTime;
+
+                    // Broadcast seek to other users
+                    socket.emit('seek-track', { currentTime: seekTime });
+                }
+            });
+        }
+
+        // Update progress display
+        function updateProgress() {
+            if (audioPlayer && audioPlayer.duration) {
+                const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                const progressBarFill = document.getElementById('progressBarFill');
+                const seekBar = document.getElementById('seekBar');
+                const currentTimeEl = document.getElementById('currentTime');
+
+                progressBarFill.style.width = `${progress}%`;
+                seekBar.value = progress;
+                currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+            }
+        }
+
+        // Update duration display
+        function updateDuration() {
+            if (audioPlayer && audioPlayer.duration) {
+                document.getElementById('duration').textContent = formatTime(audioPlayer.duration);
+            }
+        }
+
+        // Format time (seconds to MM:SS)
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Start progress updates
+        function startProgressUpdate() {
+            stopProgressUpdate(); // Clear any existing interval
+            progressUpdateInterval = setInterval(updateProgress, 100);
+        }
+
+        // Stop progress updates
+        function stopProgressUpdate() {
+            if (progressUpdateInterval) {
+                clearInterval(progressUpdateInterval);
+                progressUpdateInterval = null;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add initial welcome message
+            displayActivity({
+                message: '🚀 Welcome to Global Music Room! All activities will be shared with everyone.',
+                type: 'system',
+                timestamp: new Date().toISOString()
+            });
+
+            // Initialize audio player
+            initializeAudioPlayer();
+
+            document.getElementById('usernameInput').focus();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple UI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .pass { background: #d4edda; }
+        .fail { background: #f8d7da; }
+        button { padding: 10px; margin: 5px; }
+        #log { background: #f5f5f5; padding: 10px; height: 300px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>Simple UI Test</h1>
+    <div id="tests"></div>
+
+    <h2>Manual Tests</h2>
+    <button onclick="testRoomCreation()">Test Room Creation</button>
+    <button onclick="testSocketConnection()">Test Socket Connection</button>
+    <button onclick="testMusicLoading()">Test Music Loading</button>
+
+    <h2>Console Log</h2>
+    <div id="log"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            div.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function addTest(name, passed, details = '') {
+            const testsDiv = document.getElementById('tests');
+            const div = document.createElement('div');
+            div.className = `test ${passed ? 'pass' : 'fail'}`;
+            div.innerHTML = `<strong>${name}:</strong> ${passed ? 'PASS' : 'FAIL'} ${details}`;
+            testsDiv.appendChild(div);
+        }
+
+        // Basic tests
+        function runBasicTests() {
+            log('Running basic tests...');
+
+            // Test 1: Check if Socket.IO is available
+            if (typeof io !== 'undefined') {
+                addTest('Socket.IO Available', true);
+                log('✅ Socket.IO is available', 'success');
+            } else {
+                addTest('Socket.IO Available', false);
+                log('❌ Socket.IO is not available', 'error');
+            }
+
+            // Test 2: Check if we can access API
+            fetch('/api/music')
+                .then(response => response.json())
+                .then(data => {
+                    addTest('Music API', true, `${data.length} files found`);
+                    log(`✅ Music API works: ${data.length} files found`, 'success');
+                })
+                .catch(error => {
+                    addTest('Music API', false, error.message);
+                    log(`❌ Music API failed: ${error.message}`, 'error');
+                });
+
+            // Test 3: Check if we can create rooms
+            fetch('/api/rooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'Test Room', username: 'TestUser' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    addTest('Room Creation API', true, `Room ID: ${data.roomId}`);
+                    log(`✅ Room creation works: ${data.roomId}`, 'success');
+                })
+                .catch(error => {
+                    addTest('Room Creation API', false, error.message);
+                    log(`❌ Room creation failed: ${error.message}`, 'error');
+                });
+        }
+
+        function testRoomCreation() {
+            log('Testing room creation...');
+            fetch('/api/rooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'Manual Test Room', username: 'ManualTestUser' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    log(`✅ Room created: ${data.roomId}`, 'success');
+                })
+                .catch(error => {
+                    log(`❌ Room creation failed: ${error.message}`, 'error');
+                });
+        }
+
+        function testSocketConnection() {
+            log('Testing Socket.IO connection...');
+            const socket = io();
+
+            socket.on('connect', () => {
+                log(`✅ Socket connected: ${socket.id}`, 'success');
+
+                // Test joining a room
+                fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Socket Test Room', username: 'SocketTestUser' })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        socket.emit('join-room', {
+                            roomId: data.roomId,
+                            username: 'SocketTestUser',
+                            isHost: true
+                        });
+                        log(`📡 Joined room: ${data.roomId}`, 'success');
+                    });
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Socket connection failed: ${error.message}`, 'error');
+            });
+
+            socket.on('users-updated', (users) => {
+                log(`👥 Users updated: ${users.length} users`);
+            });
+        }
+
+        function testMusicLoading() {
+            log('Testing music file loading...');
+            fetch('/api/music')
+                .then(response => response.json())
+                .then(files => {
+                    log(`📁 Found ${files.length} music files:`, 'success');
+                    files.forEach((file, index) => {
+                        log(`   ${index + 1}. ${file.originalName}`, 'info');
+                    });
+
+                    // Test if we can access a music file
+                    if (files.length > 0) {
+                        fetch(files[0].url, { method: 'HEAD' })
+                            .then(response => {
+                                if (response.ok) {
+                                    log(`✅ Music file accessible: ${files[0].originalName}`, 'success');
+                                } else {
+                                    log(`❌ Music file not accessible: ${files[0].originalName}`, 'error');
+                                }
+                            });
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Music loading failed: ${error.message}`, 'error');
+                });
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            log('Page loaded, starting tests...');
+            runBasicTests();
+        });
+    </script>
+</body>
+</html>

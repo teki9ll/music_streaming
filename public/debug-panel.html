@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .panel { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #log { background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 4px; height: 400px; overflow-y: scroll; font-family: monospace; font-size: 12px; }
+        .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .manual-test { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Remote Music Player Debug Panel</h1>
+
+    <div class="test-grid">
+        <div class="panel">
+            <h2>Connection Status</h2>
+            <div id="connectionStatus"></div>
+            <button onclick="testConnection()">Test Connection</button>
+            <button onclick="testSocket()">Test Socket.IO</button>
+        </div>
+
+        <div class="panel">
+            <h2>API Status</h2>
+            <div id="apiStatus"></div>
+            <button onclick="testAPIs()">Test APIs</button>
+        </div>
+
+        <div class="panel">
+            <h2>Room Management</h2>
+            <div id="roomStatus"></div>
+            <button onclick="createTestRoom()">Create Test Room</button>
+            <button onclick="joinTestRoom()">Join Test Room</button>
+            <button onclick="leaveTestRoom()">Leave Room</button>
+        </div>
+
+        <div class="panel">
+            <h2>Music Tests</h2>
+            <div id="musicStatus"></div>
+            <button onclick="testMusicAPI()">Test Music API</button>
+            <button onclick="testAudioElement()">Test Audio Element</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Manual Test Steps</h2>
+        <div class="manual-test">
+            <h3>Step 1: Open Main Application</h3>
+            <p>Open <a href="/" target="_blank">http://localhost:3000</a> in a new tab</p>
+
+            <h3>Step 2: Create Room</h3>
+            <ol>
+                <li>Click "Create Room"</li>
+                <li>Enter room name: "Debug Test Room"</li>
+                <li>Enter username: "DebugHost"</li>
+                <li>Click "Create Room"</li>
+            </ol>
+
+            <h3>Step 3: Check Console</h3>
+            <p>Open browser console (F12) and look for:</p>
+            <ul>
+                <li>"DOM loaded, initializing RemoteMusicPlayer..."</li>
+                <li>"✅ Connected to server with socket ID: [id]"</li>
+                <li>"🏠 Creating room..."</li>
+                <li>"✅ Room created successfully"</li>
+            </ul>
+
+            <h3>Step 4: Test Music</h3>
+            <ol>
+                <li>Click "Upload Music" or check existing music</li>
+                <li>Click play button on a track</li>
+                <li>Check console for audio events</li>
+            </ol>
+
+            <h3>Step 5: Test Multi-User</h3>
+            <ol>
+                <li>Copy the Room ID from host</li>
+                <li>Open another browser tab</li>
+                <li>Join with same Room ID</li>
+                <li>Check if both users see each other</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Console Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="exportLog()">Export Log</button>
+        <div id="log"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let debugSocket = null;
+        let testRoomId = null;
+        let logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.innerHTML = `<span style="color: #a0aec0">[${timestamp}]</span> <span style="color: ${type === 'error' ? '#fc8181' : type === 'success' ? '#68d391' : type === 'warn' ? '#f6ad55' : '#e2e8f0'}">${message}</span>`;
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function addStatus(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            container.appendChild(div);
+        }
+
+        function clearStatus(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        function exportLog() {
+            const logText = logDiv.innerText;
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `debug-log-${Date.now()}.txt`;
+            a.click();
+        }
+
+        async function testConnection() {
+            clearStatus('connectionStatus');
+            log('🔍 Testing server connection...');
+
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    addStatus('connectionStatus', '✅ Server responding', 'pass');
+                    log('✅ Server connection successful', 'success');
+                } else {
+                    addStatus('connectionStatus', `❌ Server error: ${response.status}`, 'fail');
+                    log(`❌ Server connection failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addStatus('connectionStatus', `❌ Connection failed: ${error.message}`, 'fail');
+                log(`❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        function testSocket() {
+            clearStatus('connectionStatus');
+            log('🔌 Testing Socket.IO connection...');
+
+            if (debugSocket) {
+                debugSocket.disconnect();
+            }
+
+            debugSocket = io();
+
+            debugSocket.on('connect', () => {
+                addStatus('connectionStatus', `✅ Socket connected: ${debugSocket.id}`, 'pass');
+                log(`✅ Socket.IO connected: ${debugSocket.id}`, 'success');
+            });
+
+            debugSocket.on('connect_error', (error) => {
+                addStatus('connectionStatus', `❌ Socket error: ${error.message}`, 'fail');
+                log(`❌ Socket.IO error: ${error.message}`, 'error');
+            });
+        }
+
+        async function testAPIs() {
+            clearStatus('apiStatus');
+            log('🔍 Testing API endpoints...');
+
+            // Test rooms API
+            try {
+                const roomsResponse = await fetch('/api/rooms');
+                const rooms = await roomsResponse.json();
+                addStatus('apiStatus', `✅ Rooms API: ${rooms.length} rooms`, 'pass');
+                log(`✅ Rooms API working: ${rooms.length} active rooms`, 'success');
+            } catch (error) {
+                addStatus('apiStatus', `❌ Rooms API failed: ${error.message}`, 'fail');
+                log(`❌ Rooms API error: ${error.message}`, 'error');
+            }
+
+            // Test music API
+            try {
+                const musicResponse = await fetch('/api/music');
+                const music = await musicResponse.json();
+                addStatus('apiStatus', `✅ Music API: ${music.length} files`, 'pass');
+                log(`✅ Music API working: ${music.length} files found`, 'success');
+            } catch (error) {
+                addStatus('apiStatus', `❌ Music API failed: ${error.message}`, 'fail');
+                log(`❌ Music API error: ${error.message}`, 'error');
+            }
+        }
+
+        async function createTestRoom() {
+            clearStatus('roomStatus');
+            log('🏠 Creating test room...');
+
+            try {
+                const response = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Debug Test Room', username: 'DebugUser' })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    testRoomId = data.roomId;
+                    addStatus('roomStatus', `✅ Room created: ${testRoomId}`, 'pass');
+                    log(`✅ Test room created: ${testRoomId}`, 'success');
+                } else {
+                    addStatus('roomStatus', `❌ Room creation failed: ${response.status}`, 'fail');
+                    log(`❌ Room creation failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addStatus('roomStatus', `❌ Room creation error: ${error.message}`, 'fail');
+                log(`❌ Room creation error: ${error.message}`, 'error');
+            }
+        }
+
+        function joinTestRoom() {
+            if (!testRoomId) {
+                addStatus('roomStatus', '❌ No test room created yet', 'fail');
+                log('❌ Create a test room first', 'error');
+                return;
+            }
+
+            if (!debugSocket || !debugSocket.connected) {
+                addStatus('roomStatus', '❌ Socket not connected', 'fail');
+                log('❌ Connect socket first', 'error');
+                return;
+            }
+
+            log('🔌 Joining test room...');
+            debugSocket.emit('join-room', {
+                roomId: testRoomId,
+                username: 'DebugListener',
+                isHost: false
+            });
+
+            addStatus('roomStatus', `📡 Joined room: ${testRoomId}`, 'info');
+            log(`📡 Joined test room: ${testRoomId}`, 'info');
+        }
+
+        function leaveTestRoom() {
+            if (debugSocket && debugSocket.connected) {
+                debugSocket.disconnect();
+                addStatus('roomStatus', '🔌 Disconnected from room', 'info');
+                log('🔌 Disconnected from test room', 'info');
+            }
+        }
+
+        async function testMusicAPI() {
+            clearStatus('musicStatus');
+            log('🎵 Testing music API...');
+
+            try {
+                const response = await fetch('/api/music');
+                const files = await response.json();
+
+                addStatus('musicStatus', `✅ Found ${files.length} music files`, 'pass');
+                log(`✅ Music files found: ${files.length}`, 'success');
+
+                files.forEach((file, index) => {
+                    log(`   ${index + 1}. ${file.originalName} (${Math.round(file.size / 1024 / 1024)}MB)`, 'info');
+                });
+
+                // Test file accessibility
+                if (files.length > 0) {
+                    const fileResponse = await fetch(files[0].url, { method: 'HEAD' });
+                    if (fileResponse.ok) {
+                        addStatus('musicStatus', '✅ Music files accessible', 'pass');
+                        log(`✅ Music file accessible: ${files[0].originalName}`, 'success');
+                    } else {
+                        addStatus('musicStatus', '❌ Music files not accessible', 'fail');
+                        log(`❌ Music file not accessible: ${files[0].originalName}`, 'error');
+                    }
+                }
+            } catch (error) {
+                addStatus('musicStatus', `❌ Music API error: ${error.message}`, 'fail');
+                log(`❌ Music API error: ${error.message}`, 'error');
+            }
+        }
+
+        function testAudioElement() {
+            clearStatus('musicStatus');
+            log('🎧 Testing audio element...');
+
+            const audio = new Audio();
+
+            audio.addEventListener('canplay', () => {
+                addStatus('musicStatus', '✅ Audio element working', 'pass');
+                log('✅ Audio element can play', 'success');
+            });
+
+            audio.addEventListener('error', (error) => {
+                addStatus('musicStatus', '❌ Audio element error', 'fail');
+                log(`❌ Audio element error: ${error}`, 'error');
+            });
+
+            // Try to load a music file
+            fetch('/api/music')
+                .then(response => response.json())
+                .then(files => {
+                    if (files.length > 0) {
+                        audio.src = files[0].url;
+                        log(`🎧 Loading audio: ${files[0].originalName}`, 'info');
+                    } else {
+                        addStatus('musicStatus', '⚠️ No music files to test', 'info');
+                        log('⚠️ No music files available for testing', 'warn');
+                    }
+                })
+                .catch(error => {
+                    addStatus('musicStatus', `❌ Failed to load music: ${error.message}`, 'fail');
+                    log(`❌ Failed to load music: ${error.message}`, 'error');
+                });
+        }
+
+        // Set up socket listeners
+        function setupSocketListeners() {
+            if (!debugSocket) return;
+
+            debugSocket.on('users-updated', (users) => {
+                log(`👥 Users updated: ${users.length} users`, 'info');
+            });
+
+            debugSocket.on('room-state', (data) => {
+                log(`📡 Room state received: playing=${data.isPlaying}, track=${data.currentTrack?.originalName}`, 'info');
+            });
+
+            debugSocket.on('track-playing', (data) => {
+                log(`🎵 Track playing: ${data.track?.originalName}`, 'success');
+            });
+
+            debugSocket.on('error', (error) => {
+                log(`❌ Socket error: ${error.message}`, 'error');
+            });
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            log('🚀 Debug panel loaded', 'success');
+            testConnection();
+            testAPIs();
+        });
+    </script>
+</body>
+</html>

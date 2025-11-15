@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 600px;
+            margin: 20px 0;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Remote Music Player - UI Debug & Test</h1>
+
+    <div class="test-section">
+        <h2>1. Server Connection Test</h2>
+        <div id="serverTest"></div>
+        <button onclick="testServerConnection()">Test Server Connection</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. API Endpoints Test</h2>
+        <div id="apiTest"></div>
+        <button onclick="testAPIEndpoints()">Test All APIs</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Socket.IO Connection Test</h2>
+        <div id="socketTest"></div>
+        <button onclick="testSocketConnection()">Test Socket.IO</button>
+        <button onclick="testRoomCreation()">Test Room Creation</button>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Live UI Test</h2>
+        <p>Open the actual application in the iframe below and interact with it:</p>
+        <div class="iframe-container">
+            <iframe src="/" id="appFrame"></iframe>
+        </div>
+        <div id="uiInteractionResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Music File Test</h2>
+        <div id="musicTest"></div>
+        <button onclick="testMusicFiles()">Test Music Files</button>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Console Log Monitor</h2>
+        <div id="consoleLog"></div>
+        <button onclick="clearConsoleLog()">Clear Logs</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let testSocket = null;
+        let consoleLogs = [];
+
+        // Override console methods to capture logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+
+        function captureConsoleLog(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+
+            consoleLogs.push({ timestamp, type, message });
+
+            const logDiv = document.getElementById('consoleLog');
+            logDiv.innerHTML += `<div class="test-result ${type}">
+                <strong>[${timestamp}] ${type.toUpperCase()}:</strong> ${message}
+            </div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            // Call original console method
+            originalConsole[type](...args);
+        }
+
+        console.log = (...args) => captureConsoleLog('log', ...args);
+        console.error = (...args) => captureConsoleLog('error', ...args);
+        console.warn = (...args) => captureConsoleLog('warn', ...args);
+        console.info = (...args) => captureConsoleLog('info', ...args);
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        function clearConsoleLog() {
+            consoleLogs = [];
+            document.getElementById('consoleLog').innerHTML = '';
+        }
+
+        async function testServerConnection() {
+            clearResults('serverTest');
+            addResult('serverTest', 'Testing server connection...', 'info');
+
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    addResult('serverTest', '✅ Server is responding', 'pass');
+                    const html = await response.text();
+                    if (html.includes('Remote Music Player')) {
+                        addResult('serverTest', '✅ Main page loaded correctly', 'pass');
+                    } else {
+                        addResult('serverTest', '❌ Main page content missing', 'fail');
+                    }
+                } else {
+                    addResult('serverTest', `❌ Server responded with ${response.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('serverTest', `❌ Server connection failed: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testAPIEndpoints() {
+            clearResults('apiTest');
+            addResult('apiTest', 'Testing API endpoints...', 'info');
+
+            // Test rooms API
+            try {
+                const roomsResponse = await fetch('/api/rooms');
+                if (roomsResponse.ok) {
+                    const rooms = await roomsResponse.json();
+                    addResult('apiTest', `✅ Rooms API: ${rooms.length} active rooms`, 'pass');
+                } else {
+                    addResult('apiTest', `❌ Rooms API failed: ${roomsResponse.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('apiTest', `❌ Rooms API error: ${error.message}`, 'fail');
+            }
+
+            // Test music API
+            try {
+                const musicResponse = await fetch('/api/music');
+                if (musicResponse.ok) {
+                    const music = await musicResponse.json();
+                    addResult('apiTest', `✅ Music API: ${music.length} music files found`, 'pass');
+                    music.forEach((file, index) => {
+                        addResult('apiTest', `   ${index + 1}. ${file.originalName} (${Math.round(file.size / 1024 / 1024)}MB)`, 'info');
+                    });
+                } else {
+                    addResult('apiTest', `❌ Music API failed: ${musicResponse.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('apiTest', `❌ Music API error: ${error.message}`, 'fail');
+            }
+
+            // Test room creation
+            try {
+                const createResponse = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Test Room', username: 'TestUser' })
+                });
+                if (createResponse.ok) {
+                    const roomData = await createResponse.json();
+                    addResult('apiTest', `✅ Room creation: ${roomData.roomId}`, 'pass');
+                } else {
+                    addResult('apiTest', `❌ Room creation failed: ${createResponse.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('apiTest', `❌ Room creation error: ${error.message}`, 'fail');
+            }
+        }
+
+        function testSocketConnection() {
+            clearResults('socketTest');
+            addResult('socketTest', 'Testing Socket.IO connection...', 'info');
+
+            if (testSocket) {
+                testSocket.disconnect();
+            }
+
+            testSocket = io();
+
+            testSocket.on('connect', () => {
+                addResult('socketTest', '✅ Socket.IO connected successfully', 'pass');
+                addResult('socketTest', `Socket ID: ${testSocket.id}`, 'info');
+            });
+
+            testSocket.on('connect_error', (error) => {
+                addResult('socketTest', `❌ Socket.IO connection failed: ${error.message}`, 'fail');
+            });
+
+            testSocket.on('disconnect', () => {
+                addResult('socketTest', 'Socket.IO disconnected', 'info');
+            });
+
+            // Test event listeners
+            testSocket.on('test-event', (data) => {
+                addResult('socketTest', `✅ Received test event: ${JSON.stringify(data)}`, 'pass');
+            });
+        }
+
+        async function testRoomCreation() {
+            if (!testSocket || !testSocket.connected) {
+                addResult('socketTest', '❌ Socket.IO not connected. Test connection first.', 'fail');
+                return;
+            }
+
+            addResult('socketTest', 'Testing room creation via Socket.IO...', 'info');
+
+            try {
+                const response = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Debug Room', username: 'DebugUser' })
+                });
+
+                if (response.ok) {
+                    const roomData = await response.json();
+
+                    testSocket.emit('join-room', {
+                        roomId: roomData.roomId,
+                        username: 'DebugUser',
+                        isHost: true
+                    });
+
+                    addResult('socketTest', `✅ Room ${roomData.roomId} created and joined`, 'pass');
+                } else {
+                    addResult('socketTest', `❌ Room creation failed: ${response.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('socketTest', `❌ Room creation error: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testMusicFiles() {
+            clearResults('musicTest');
+            addResult('musicTest', 'Testing music file accessibility...', 'info');
+
+            try {
+                const musicResponse = await fetch('/api/music');
+                if (musicResponse.ok) {
+                    const musicFiles = await musicResponse.json();
+
+                    if (musicFiles.length === 0) {
+                        addResult('musicTest', '⚠️ No music files found', 'info');
+                        return;
+                    }
+
+                    for (const file of musicFiles.slice(0, 3)) { // Test first 3 files
+                        try {
+                            const fileResponse = await fetch(file.url, { method: 'HEAD' });
+                            if (fileResponse.ok) {
+                                addResult('musicTest', `✅ ${file.originalName} - Accessible`, 'pass');
+                            } else {
+                                addResult('musicTest', `❌ ${file.originalName} - Not accessible (${fileResponse.status})`, 'fail');
+                            }
+                        } catch (error) {
+                            addResult('musicTest', `❌ ${file.originalName} - Error: ${error.message}`, 'fail');
+                        }
+                    }
+                } else {
+                    addResult('musicTest', `❌ Failed to get music list: ${musicResponse.status}`, 'fail');
+                }
+            } catch (error) {
+                addResult('musicTest', `❌ Music file test error: ${error.message}`, 'fail');
+            }
+        }
+
+        // Monitor iframe for UI interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            const iframe = document.getElementById('appFrame');
+
+            iframe.addEventListener('load', function() {
+                addResult('uiInteractionResults', '✅ Application loaded in iframe', 'pass');
+
+                // Try to access iframe content (may be blocked by CORS)
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        addResult('uiInteractionResults', '✅ Can access iframe content', 'pass');
+                    }
+                } catch (error) {
+                    addResult('uiInteractionResults', '⚠️ Cannot access iframe content due to CORS restrictions', 'info');
+                }
+            });
+        });
+
+        // Auto-run basic tests on page load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                testServerConnection();
+                testAPIEndpoints();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
