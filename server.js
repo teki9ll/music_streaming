@@ -77,10 +77,11 @@ class Room {
     this.createdAt = new Date();
   }
 
-  addUser(socket, username, isHost = false) {
+  addUser(socket, username, isHost = false, isSuperHost = false) {
     this.users.set(socket.id, {
       username,
       isHost,
+      isSuperHost,
       socket,
       joinedAt: new Date()
     });
@@ -93,21 +94,30 @@ class Room {
 
   isUserHost(socketId) {
     const user = this.users.get(socketId);
-    return user && user.isHost;
+    return user && (user.isHost || user.isSuperHost);
   }
 
-  addCoHost(socketId) {
+  isUserSuperHost(socketId) {
     const user = this.users.get(socketId);
-    if (user) {
+    return user && user.isSuperHost;
+  }
+
+  makeHost(socketId) {
+    const user = this.users.get(socketId);
+    if (user && !user.isSuperHost) {
       user.isHost = true;
+      return true;
     }
+    return false;
   }
 
-  removeCoHost(socketId) {
+  removeHost(socketId) {
     const user = this.users.get(socketId);
-    if (user && socketId !== this.hostId) {
+    if (user && !user.isSuperHost) {
       user.isHost = false;
+      return true;
     }
+    return false;
   }
 
   getConnectedUsers() {
@@ -115,6 +125,7 @@ class Room {
       id: socketId,
       username: user.username,
       isHost: user.isHost,
+      isSuperHost: user.isSuperHost,
       joinedAt: user.joinedAt
     }));
   }
@@ -231,11 +242,17 @@ io.on('connection', (socket) => {
 
     socket.join(DEFAULT_ROOM_ID);
 
-    // Make first user the host
+    // Make first user the super host and host
     const userCount = room.users.size;
     const isHost = userCount === 0;
+    const isSuperHost = userCount === 0;
 
-    const user = room.addUser(socket, username, isHost);
+    const user = room.addUser(socket, username, isHost, isSuperHost);
+
+    // If this is the super host, set room properties
+    if (isSuperHost) {
+      room.hostId = socket.id;
+    }
 
     // Send current room state to new user
     socket.emit('room-state', {
@@ -245,6 +262,7 @@ io.on('connection', (socket) => {
       volume: room.volume,
       musicQueue: room.musicQueue,
       isHost: isHost,
+      isSuperHost: isSuperHost,
       room: {
         id: DEFAULT_ROOM_ID,
         name: DEFAULT_ROOM_NAME
@@ -259,7 +277,8 @@ io.on('connection', (socket) => {
       user: {
         id: socket.id,
         username: username,
-        isHost: isHost
+        isHost: isHost,
+        isSuperHost: isSuperHost
       },
       connectedUsers: room.getConnectedUsers()
     });
@@ -270,12 +289,18 @@ io.on('connection', (socket) => {
       roomId: DEFAULT_ROOM_ID,
       username,
       userCount: connectedUsers.length,
-      users: connectedUsers.map(u => ({ id: u.id, username: u.username, isHost: u.isHost }))
+      users: connectedUsers.map(u => ({ id: u.id, username: u.username, isHost: u.isHost, isSuperHost: u.isSuperHost }))
     });
     io.to(DEFAULT_ROOM_ID).emit('users-updated', connectedUsers);
 
     // Broadcast join activity to everyone
-    broadcastActivity(`${username} joined the Global Music Room ${isHost ? 'as HOST 👑' : 'as listener 🎧'}`, 'join', username);
+    let roleText = 'as listener 🎧';
+    if (isSuperHost) {
+      roleText = 'as SUPER HOST 👑';
+    } else if (isHost) {
+      roleText = 'as HOST 🎤';
+    }
+    broadcastActivity(`${username} joined the Global Music Room ${roleText}`, 'join', username);
   });
 
   // Handle client activities (like track selection)
@@ -286,6 +311,48 @@ io.on('connection', (socket) => {
 
     if (user) {
       broadcastActivity(message, type, user.username);
+    }
+  });
+
+  // Handle make host requests (only super hosts can promote others)
+  socket.on('make-host', (data) => {
+    const { userId } = data;
+    const room = rooms[DEFAULT_ROOM_ID];
+    const requester = room?.users.get(socket.id);
+
+    // Check if requester is a super host
+    if (!requester || !requester.isSuperHost) {
+      socket.emit('error', { message: 'Only super hosts can promote other users' });
+      return;
+    }
+
+    // Find target user
+    const targetUser = room?.users.get(userId);
+    if (!targetUser) {
+      socket.emit('error', { message: 'User not found' });
+      return;
+    }
+
+    // Cannot promote another super host
+    if (targetUser.isSuperHost) {
+      socket.emit('error', { message: 'Cannot promote a super host' });
+      return;
+    }
+
+    // Promote to host
+    if (room.makeHost(userId)) {
+      // Notify all users
+      io.to(DEFAULT_ROOM_ID).emit('made-host', {
+        userId: userId,
+        username: targetUser.username,
+        promotedBy: requester.username
+      });
+
+      // Send updated user list
+      io.to(DEFAULT_ROOM_ID).emit('users-updated', room.getConnectedUsers());
+
+      // Broadcast activity
+      broadcastActivity(`${requester.username} promoted ${targetUser.username} to Host`, 'system');
     }
   });
 

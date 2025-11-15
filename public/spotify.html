@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Spotify Room - Music Together</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Circular+Std:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --spotify-black: #121212;
+            --spotify-base: #181818;
+            --spotify-highlight: #282828;
+            --spotify-text: #ffffff;
+            --spotify-text-muted: #b3b3b3;
+            --spotify-green: #1db954;
+            --spotify-green-hover: #1ed760;
+            --spotify-green-active: #1aa34a;
+        }
+
+        body {
+            font-family: 'Circular Std', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--spotify-black);
+            color: var(--spotify-text);
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--spotify-black);
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .spotify-logo {
+            padding: 0 24px;
+            margin-bottom: 24px;
+        }
+
+        .spotify-logo h1 {
+            font-size: 28px;
+            font-weight: 900;
+            background: var(--spotify-green);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .nav-item:hover {
+            background: var(--spotify-highlight);
+            color: var(--spotify-text);
+        }
+
+        .nav-item.active {
+            background: var(--spotify-highlight);
+            color: var(--spotify-text);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #1a1a1a 0%, var(--spotify-black) 100%);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: var(--spotify-black);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--spotify-highlight);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--spotify-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .username {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-role {
+            font-size: 11px;
+            color: var(--spotify-text-muted);
+        }
+
+        .host-badge {
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+        }
+
+        /* Room Section */
+        .room-section {
+            margin-bottom: 48px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 16px;
+        }
+
+        .room-info {
+            background: var(--spotify-highlight);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .room-name {
+            font-size: 32px;
+            font-weight: 900;
+        }
+
+        .room-id {
+            background: var(--spotify-base);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        /* Music Library */
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .music-card {
+            background: var(--spotify-highlight);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .music-card:hover {
+            background: var(--spotify-base);
+            transform: translateY(-4px);
+        }
+
+        .music-card.playing {
+            background: var(--spotify-highlight);
+            border: 2px solid var(--spotify-green);
+        }
+
+        .music-cover {
+            width: 100%;
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, var(--spotify-green), #1aa34a);
+            border-radius: 4px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .music-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .music-artist {
+            font-size: 12px;
+            color: var(--spotify-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .playing-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* Users Section */
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .user-card {
+            background: var(--spotify-highlight);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .user-card:hover {
+            background: var(--spotify-base);
+        }
+
+        .user-card-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--spotify-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .user-card-info {
+            flex: 1;
+        }
+
+        .user-card-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .user-card-role {
+            font-size: 12px;
+            color: var(--spotify-text-muted);
+        }
+
+        .make-host-btn {
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .make-host-btn:hover {
+            background: var(--spotify-green-hover);
+        }
+
+        /* Player Bar */
+        .player-bar {
+            background: var(--spotify-base);
+            border-top: 1px solid var(--spotify-highlight);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            height: 90px;
+        }
+
+        .now-playing {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .now-playing-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .now-playing-artist {
+            font-size: 11px;
+            color: var(--spotify-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 2;
+        }
+
+        .control-buttons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--spotify-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            color: var(--spotify-text);
+            transform: scale(1.1);
+        }
+
+        .control-btn:disabled {
+            color: var(--spotify-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            font-size: 18px;
+        }
+
+        .play-btn:hover {
+            background: var(--spotify-green-hover);
+        }
+
+        .play-btn:disabled {
+            background: var(--spotify-text-muted);
+            color: var(--spotify-black);
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--spotify-text-muted);
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--spotify-text);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -4px;
+            width: 12px;
+            height: 12px;
+            background: var(--spotify-text);
+            border-radius: 50%;
+            box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        }
+
+        .time {
+            font-size: 11px;
+            color: var(--spotify-text-muted);
+            font-weight: 600;
+            min-width: 40px;
+        }
+
+        .extra-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .extra-btn {
+            background: none;
+            border: none;
+            color: var(--spotify-text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .extra-btn:hover {
+            color: var(--spotify-text);
+            transform: scale(1.1);
+        }
+
+        .extra-btn.active {
+            color: var(--spotify-green);
+        }
+
+        .extra-btn:disabled {
+            color: var(--spotify-text-muted);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Activity Panel */
+        .activity-panel {
+            width: 320px;
+            background: var(--spotify-base);
+            padding: 24px;
+            border-left: 1px solid var(--spotify-highlight);
+            overflow-y: auto;
+        }
+
+        .activity-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--spotify-highlight);
+        }
+
+        .activity-log {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .activity-item {
+            padding: 12px;
+            background: var(--spotify-highlight);
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .activity-time {
+            font-size: 10px;
+            color: var(--spotify-text-muted);
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .activity-message {
+            color: var(--spotify-text);
+        }
+
+        .activity-join { border-left: 3px solid var(--spotify-green); }
+        .activity-leave { border-left: 3px solid #ff6b6b; }
+        .activity-music { border-left: 3px solid #ffd93d; }
+        .activity-system { border-left: 3px solid #6c5ce7; }
+
+        /* Mobile Responsive */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .activity-panel {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                display: none;
+            }
+
+            .activity-panel {
+                display: none;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+
+            .music-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .player-bar {
+                padding: 12px 16px;
+                flex-direction: column;
+                height: auto;
+                gap: 12px;
+            }
+
+            .player-controls {
+                order: 1;
+            }
+
+            .now-playing {
+                order: 2;
+                text-align: center;
+                min-width: auto;
+            }
+
+            .extra-controls {
+                order: 3;
+                justify-content: center;
+            }
+
+            .content-area {
+                padding: 16px;
+            }
+
+            .music-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 12px;
+            }
+
+            .room-name {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .top-bar {
+                padding: 12px 16px;
+            }
+
+            .content-area {
+                padding: 12px;
+            }
+
+            .music-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .music-title {
+                font-size: 12px;
+            }
+
+            .music-artist {
+                font-size: 10px;
+            }
+
+            .room-name {
+                font-size: 20px;
+            }
+
+            .users-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Username Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--spotify-base);
+            border-radius: 8px;
+            padding: 32px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .modal-subtitle {
+            color: var(--spotify-text-muted);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--spotify-highlight);
+            border: 1px solid var(--spotify-text-muted);
+            border-radius: 4px;
+            color: var(--spotify-text);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .input-field::placeholder {
+            color: var(--spotify-text-muted);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--spotify-green);
+        }
+
+        .join-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .join-btn:hover {
+            background: var(--spotify-green-hover);
+            transform: scale(1.02);
+        }
+
+        .join-btn:disabled {
+            background: var(--spotify-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="usernameModal" class="modal-overlay">
+        <div class="modal">
+            <h2 class="modal-title">🎵 Join the Room</h2>
+            <p class="modal-subtitle">Enter your username to start listening together</p>
+            <div class="input-group">
+                <input type="text" id="usernameInput" class="input-field" placeholder="Your username..." maxlength="20" autocomplete="off">
+            </div>
+            <button id="joinBtn" class="join-btn">Join Room</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="app-container hidden">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="spotify-logo">
+                <h1>Spotify Room</h1>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-item active">
+                    <span class="nav-icon">🏠</span>
+                    <span>Home</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">🎵</span>
+                    <span>Music</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span>Users</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-details">
+                        <div class="username" id="username">-</div>
+                        <div class="user-role" id="userRole">-</div>
+                    </div>
+                </div>
+                <div class="room-info-header">
+                    <div class="room-id" id="roomId">Room: -</div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Room Section -->
+                <div class="room-section">
+                    <div class="room-info">
+                        <div class="room-header">
+                            <h2 class="room-name">🎵 Global Music Room</h2>
+                        </div>
+                        <p>Welcome to the shared music experience! The host controls what everyone hears.</p>
+                    </div>
+                </div>
+
+                <!-- Music Library -->
+                <div class="room-section">
+                    <h3 class="section-title">🎵 Music Library</h3>
+                    <div class="music-grid" id="musicGrid">
+                        <div class="music-card">
+                            <div class="music-cover">🎵</div>
+                            <div class="music-title">Loading...</div>
+                            <div class="music-artist">Please wait</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connected Users -->
+                <div class="room-section">
+                    <h3 class="section-title">👥 Connected Users (<span id="userCount">0</span>)</h3>
+                    <div class="users-grid" id="usersGrid">
+                        <!-- Users will be added here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Bar -->
+            <div class="player-bar">
+                <div class="now-playing">
+                    <div class="now-playing-title" id="nowPlayingTitle">No track playing</div>
+                    <div class="now-playing-artist" id="nowPlayingArtist">Select a track to start</div>
+                </div>
+
+                <div class="player-controls">
+                    <div class="control-buttons">
+                        <button class="control-btn" id="shuffleBtn" title="Shuffle">
+                            🔀
+                        </button>
+                        <button class="control-btn" id="prevBtn" title="Previous">
+                            ⏮️
+                        </button>
+                        <button class="control-btn play-btn" id="playBtn" title="Play/Pause">
+                            ▶️
+                        </button>
+                        <button class="control-btn" id="nextBtn" title="Next">
+                            ⏭️
+                        </button>
+                        <button class="control-btn" id="repeatBtn" title="Repeat">
+                            🔁
+                        </button>
+                    </div>
+                    <div class="progress-container">
+                        <span class="time" id="currentTime">0:00</span>
+                        <div class="progress-bar" id="progressBar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span class="time" id="duration">0:00</span>
+                    </div>
+                </div>
+
+                <div class="extra-controls">
+                    <button class="extra-btn" id="volumeBtn" title="Volume">
+                        🔊
+                    </button>
+                    <button class="extra-btn" id="queueBtn" title="Queue">
+                        📋
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Panel -->
+        <div class="activity-panel">
+            <div class="activity-header">📋 Activity Log</div>
+            <div class="activity-log" id="activityLog">
+                <!-- Activity items will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden audio element -->
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <script>
+        let socket = null;
+        let currentUsername = '';
+        let currentUserId = '';
+        let isHost = false;
+        let isSuperHost = false;
+        let currentTrack = null;
+        let isPlaying = false;
+        let audioPlayer = null;
+        let progressUpdateInterval = null;
+        let isShuffle = false;
+        let repeatMode = 'off'; // 'off', 'all', 'one'
+        let musicQueue = [];
+        let currentQueueIndex = 0;
+
+        // Activity logging
+        function logActivity(message, type = 'system') {
+            const activityLog = document.getElementById('activityLog');
+            const activityItem = document.createElement('div');
+            activityItem.className = `activity-item activity-${type}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            activityItem.innerHTML = `
+                <div class="activity-time">[${timestamp}]</div>
+                <div class="activity-message">${message}</div>
+            `;
+
+            activityLog.insertBefore(activityItem, activityLog.firstChild);
+
+            // Keep only last 50 activities
+            while (activityLog.children.length > 50) {
+                activityLog.removeChild(activityLog.lastChild);
+            }
+        }
+
+        // Initialize audio player
+        function initializeAudioPlayer() {
+            audioPlayer = document.getElementById('audioPlayer');
+
+            audioPlayer.addEventListener('loadedmetadata', () => {
+                updateDuration();
+            });
+
+            audioPlayer.addEventListener('timeupdate', () => {
+                updateProgress();
+            });
+
+            audioPlayer.addEventListener('play', () => {
+                isPlaying = true;
+                startProgressUpdate();
+                updatePlayButton();
+            });
+
+            audioPlayer.addEventListener('pause', () => {
+                isPlaying = false;
+                stopProgressUpdate();
+                updatePlayButton();
+            });
+
+            audioPlayer.addEventListener('ended', () => {
+                isPlaying = false;
+                stopProgressUpdate();
+                updatePlayButton();
+                handleTrackEnd();
+            });
+
+            // Progress bar click for seeking (only for hosts)
+            const progressBar = document.getElementById('progressBar');
+            progressBar.addEventListener('click', (e) => {
+                if (!isHost || !audioPlayer || !audioPlayer.duration) return;
+
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                const seekTime = percent * audioPlayer.duration;
+
+                audioPlayer.currentTime = seekTime;
+                socket.emit('seek-track', { currentTime: seekTime });
+            });
+        }
+
+        // Update progress display
+        function updateProgress() {
+            if (audioPlayer && audioPlayer.duration) {
+                const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('currentTime').textContent = formatTime(audioPlayer.currentTime);
+            }
+        }
+
+        // Update duration display
+        function updateDuration() {
+            if (audioPlayer && audioPlayer.duration) {
+                document.getElementById('duration').textContent = formatTime(audioPlayer.duration);
+            }
+        }
+
+        // Format time
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Start progress updates
+        function startProgressUpdate() {
+            stopProgressUpdate();
+            progressUpdateInterval = setInterval(updateProgress, 100);
+        }
+
+        // Stop progress updates
+        function stopProgressUpdate() {
+            if (progressUpdateInterval) {
+                clearInterval(progressUpdateInterval);
+                progressUpdateInterval = null;
+            }
+        }
+
+        // Update play button
+        function updatePlayButton() {
+            const playBtn = document.getElementById('playBtn');
+            playBtn.innerHTML = isPlaying ? '⏸️' : '▶️';
+            playBtn.disabled = !isHost || !currentTrack;
+        }
+
+        // Handle track end
+        function handleTrackEnd() {
+            if (!isHost) return;
+
+            if (repeatMode === 'one') {
+                // Repeat current track
+                playTrack(currentTrack);
+            } else if (repeatMode === 'all' || isShuffle) {
+                // Play next track
+                playNextTrack();
+            }
+        }
+
+        // Play next track
+        function playNextTrack() {
+            if (!isHost || musicQueue.length === 0) return;
+
+            if (isShuffle) {
+                currentQueueIndex = Math.floor(Math.random() * musicQueue.length);
+            } else {
+                currentQueueIndex = (currentQueueIndex + 1) % musicQueue.length;
+            }
+
+            const nextTrack = musicQueue[currentQueueIndex];
+            selectAndPlayTrack(nextTrack);
+        }
+
+        // Play previous track
+        function playPreviousTrack() {
+            if (!isHost || musicQueue.length === 0) return;
+
+            if (isShuffle) {
+                currentQueueIndex = Math.floor(Math.random() * musicQueue.length);
+            } else {
+                currentQueueIndex = currentQueueIndex === 0 ? musicQueue.length - 1 : currentQueueIndex - 1;
+            }
+
+            const prevTrack = musicQueue[currentQueueIndex];
+            selectAndPlayTrack(prevTrack);
+        }
+
+        // Select and play track
+        function selectAndPlayTrack(track) {
+            currentTrack = track;
+
+            if (audioPlayer) {
+                audioPlayer.src = track.url;
+                audioPlayer.load();
+                audioPlayer.play().then(() => {
+                    socket.emit('play-track', {
+                        track: currentTrack,
+                        startTime: 0
+                    });
+                    logActivity(`🎵 Now playing: ${track.originalName}`, 'music');
+                }).catch(error => {
+                    console.error('Play error:', error);
+                    logActivity(`❌ Failed to play: ${error.message}`, 'system');
+                });
+            }
+
+            updateNowPlaying();
+            updateMusicGrid();
+        }
+
+        // Update now playing display
+        function updateNowPlaying() {
+            if (currentTrack) {
+                document.getElementById('nowPlayingTitle').textContent = currentTrack.originalName;
+                document.getElementById('nowPlayingArtist').textContent = 'Available locally';
+            } else {
+                document.getElementById('nowPlayingTitle').textContent = 'No track playing';
+                document.getElementById('nowPlayingArtist').textContent = 'Select a track to start';
+            }
+        }
+
+        // Update music grid
+        function updateMusicGrid() {
+            const musicGrid = document.getElementById('musicGrid');
+            musicGrid.innerHTML = '';
+
+            musicQueue.forEach((track, index) => {
+                const musicCard = document.createElement('div');
+                musicCard.className = 'music-card';
+                if (currentTrack && currentTrack.filename === track.filename) {
+                    musicCard.classList.add('playing');
+                }
+
+                musicCard.innerHTML = `
+                    <div class="music-cover">🎵</div>
+                    <div class="music-title">${track.originalName}</div>
+                    <div class="music-artist">Local file</div>
+                    ${currentTrack && currentTrack.filename === track.filename ? '<div class="playing-indicator">PLAYING</div>' : ''}
+                `;
+
+                musicCard.onclick = () => {
+                    if (isHost) {
+                        selectAndPlayTrack(track);
+                    } else {
+                        logActivity('❌ Only hosts can control music', 'system');
+                    }
+                };
+
+                musicGrid.appendChild(musicCard);
+            });
+        }
+
+        // Update users grid
+        function updateUsersGrid(users) {
+            const usersGrid = document.getElementById('usersGrid');
+            const userCount = document.getElementById('userCount');
+
+            usersGrid.innerHTML = '';
+            userCount.textContent = users.length;
+
+            users.forEach(user => {
+                const userCard = document.createElement('div');
+                userCard.className = 'user-card';
+
+                let roleDisplay = 'Listener';
+                if (user.isSuperHost) {
+                    roleDisplay = '👑 Super Host';
+                } else if (user.isHost) {
+                    roleDisplay = '🎤 Host';
+                }
+
+                userCard.innerHTML = `
+                    <div class="user-card-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-card-info">
+                        <div class="user-card-name">${user.username}</div>
+                        <div class="user-card-role">${roleDisplay}</div>
+                    </div>
+                    ${isSuperHost && !user.isHost ? `<button class="make-host-btn" onclick="makeHost('${user.id}')">Make Host</button>` : ''}
+                `;
+
+                usersGrid.appendChild(userCard);
+            });
+        }
+
+        // Make user host
+        function makeHost(userId) {
+            if (!isSuperHost) return;
+
+            socket.emit('make-host', { userId });
+            logActivity(`👤 Promoted user to host`, 'system');
+        }
+
+        // Join room
+        function joinRoom() {
+            const usernameInput = document.getElementById('usernameInput');
+            const username = usernameInput.value.trim();
+
+            if (!username) {
+                logActivity('⚠️ Please enter a username', 'system');
+                return;
+            }
+
+            currentUsername = username;
+            logActivity('🔌 Connecting to server...', 'system');
+
+            socket = io();
+
+            socket.on('connect', () => {
+                currentUserId = socket.id;
+                logActivity('✅ Connected to server!', 'system');
+
+                // Join default room
+                socket.emit('join-default-room', { username });
+            });
+
+            socket.on('room-state', (data) => {
+                isHost = data.isHost;
+                isSuperHost = data.isSuperHost;
+
+                document.getElementById('username').textContent = currentUsername;
+                document.getElementById('userRole').textContent = isSuperHost ? '👑 Super Host' : isHost ? '🎤 Host' : '🎧 Listener';
+                document.getElementById('userAvatar').textContent = currentUsername.charAt(0).toUpperCase();
+                document.getElementById('roomId').textContent = `Room: ${data.room.id}`;
+
+                // Update UI based on role
+                updateUI();
+                loadMusic();
+            });
+
+            socket.on('activity-log', (activity) => {
+                const activityLog = document.getElementById('activityLog');
+                const activityItem = document.createElement('div');
+                activityItem.className = `activity-item activity-${activity.type}`;
+
+                const timestamp = new Date(activity.timestamp).toLocaleTimeString();
+                activityItem.innerHTML = `
+                    <div class="activity-time">[${timestamp}]</div>
+                    <div class="activity-message">${activity.message}</div>
+                `;
+
+                activityLog.appendChild(activityItem);
+                activityLog.scrollTop = activityLog.scrollHeight;
+            });
+
+            socket.on('activity-history', (history) => {
+                const activityLog = document.getElementById('activityLog');
+                activityLog.innerHTML = '';
+
+                history.forEach(activity => {
+                    const activityItem = document.createElement('div');
+                    activityItem.className = `activity-item activity-${activity.type}`;
+
+                    const timestamp = new Date(activity.timestamp).toLocaleTimeString();
+                    activityItem.innerHTML = `
+                        <div class="activity-time">[${timestamp}]</div>
+                        <div class="activity-message">${activity.message}</div>
+                    `;
+
+                    activityLog.appendChild(activityItem);
+                });
+            });
+
+            socket.on('users-updated', (users) => {
+                updateUsersGrid(users);
+            });
+
+            socket.on('track-playing', (data) => {
+                currentTrack = data.track;
+                isPlaying = data.isPlaying;
+
+                if (audioPlayer && data.track) {
+                    audioPlayer.src = data.track.url;
+                    audioPlayer.load();
+                    audioPlayer.currentTime = data.startTime || 0;
+                    audioPlayer.play().catch(error => {
+                        console.error('Sync play error:', error);
+                    });
+                }
+
+                updateNowPlaying();
+                updateMusicGrid();
+                updatePlayButton();
+            });
+
+            socket.on('track-paused', (data) => {
+                isPlaying = false;
+
+                if (audioPlayer) {
+                    audioPlayer.pause();
+                    if (data.currentTime !== undefined) {
+                        audioPlayer.currentTime = data.currentTime;
+                    }
+                }
+
+                updatePlayButton();
+            });
+
+            socket.on('track-seeked', (data) => {
+                if (audioPlayer && data.currentTime !== undefined) {
+                    audioPlayer.currentTime = data.currentTime;
+                }
+            });
+
+            socket.on('made-host', (data) => {
+                if (data.userId === currentUserId) {
+                    isHost = true;
+                    updateUI();
+                    logActivity('👤 You have been promoted to Host!', 'system');
+                }
+            });
+
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                logActivity(`❌ Error: ${error.message}`, 'system');
+            });
+
+            // Hide modal, show app
+            document.getElementById('usernameModal').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+        }
+
+        // Update UI based on role
+        function updateUI() {
+            // Update control buttons
+            document.getElementById('playBtn').disabled = !isHost;
+            document.getElementById('prevBtn').disabled = !isHost;
+            document.getElementById('nextBtn').disabled = !isHost;
+            document.getElementById('shuffleBtn').disabled = !isHost;
+            document.getElementById('repeatBtn').disabled = !isHost;
+        }
+
+        // Load music
+        async function loadMusic() {
+            try {
+                const response = await fetch('/api/music');
+                const files = await response.json();
+                musicQueue = files;
+                currentQueueIndex = 0;
+
+                updateMusicGrid();
+                logActivity(`📁 Loaded ${files.length} music files`, 'system');
+            } catch (error) {
+                logActivity(`❌ Failed to load music: ${error.message}`, 'system');
+            }
+        }
+
+        // Control button handlers
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!isHost) return;
+
+            if (isPlaying) {
+                audioPlayer.pause();
+                socket.emit('pause-track', { currentTime: audioPlayer.currentTime });
+            } else if (currentTrack) {
+                audioPlayer.play().then(() => {
+                    socket.emit('play-track', {
+                        track: currentTrack,
+                        startTime: audioPlayer.currentTime
+                    });
+                }).catch(error => {
+                    console.error('Play error:', error);
+                });
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            playNextTrack();
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            playPreviousTrack();
+        });
+
+        document.getElementById('shuffleBtn').addEventListener('click', () => {
+            if (!isHost) return;
+
+            isShuffle = !isShuffle;
+            document.getElementById('shuffleBtn').classList.toggle('active', isShuffle);
+
+            const mode = isShuffle ? 'enabled' : 'disabled';
+            logActivity(`🔀 Shuffle ${mode}`, 'system');
+        });
+
+        document.getElementById('repeatBtn').addEventListener('click', () => {
+            if (!isHost) return;
+
+            const modes = ['off', 'all', 'one'];
+            const currentIndex = modes.indexOf(repeatMode);
+            repeatMode = modes[(currentIndex + 1) % modes.length];
+
+            // Update button appearance
+            const repeatBtn = document.getElementById('repeatBtn');
+            repeatBtn.classList.remove('active');
+            if (repeatMode !== 'off') {
+                repeatBtn.classList.add('active');
+                repeatBtn.textContent = repeatMode === 'one' ? '🔂' : '🔁';
+            } else {
+                repeatBtn.textContent = '🔁';
+            }
+
+            logActivity(`🔁 Repeat mode: ${repeatMode}`, 'system');
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAudioPlayer();
+
+            // Add initial activity
+            logActivity('🚀 Welcome to Spotify Room! All activities are shared.', 'system');
+
+            // Focus on username input
+            document.getElementById('usernameInput').focus();
+
+            // Handle Enter key
+            document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    joinRoom();
+                }
+            });
+
+            document.getElementById('joinBtn').addEventListener('click', joinRoom);
+        });
+    </script>
+</body>
+</html>
