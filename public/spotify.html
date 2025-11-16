@@ -255,6 +255,39 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            margin-bottom: 8px;
+        }
+
+        .music-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .music-card:hover .music-actions {
+            opacity: 1;
+        }
+
+        .music-actions .delete-btn {
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .music-actions .delete-btn:hover {
+            background: rgba(255, 82, 82, 1);
+            transform: scale(1.1);
         }
 
         .playing-indicator {
@@ -731,6 +764,485 @@
             transform: none;
         }
 
+        /* YouTube Search Styles */
+        .youtube-search-container {
+            background: var(--spotify-highlight);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .youtube-search-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--spotify-base);
+            border: 1px solid var(--spotify-text-muted);
+            border-radius: 24px;
+            color: var(--spotify-text);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .youtube-search-input::placeholder {
+            color: var(--spotify-text-muted);
+        }
+
+        .youtube-search-input:focus {
+            outline: none;
+            border-color: var(--spotify-green);
+            box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2);
+        }
+
+        .youtube-search-btn {
+            padding: 12px 24px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .youtube-search-btn:hover {
+            background: var(--spotify-green-hover);
+            transform: scale(1.02);
+        }
+
+        .youtube-search-btn:disabled {
+            background: var(--spotify-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .youtube-search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .youtube-result-item {
+            background: var(--spotify-base);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .youtube-result-item:hover {
+            background: var(--spotify-highlight);
+        }
+
+        .youtube-result-thumbnail {
+            width: 80px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff0000, #ff6b6b);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .youtube-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .youtube-result-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--spotify-text);
+        }
+
+        .youtube-result-meta {
+            font-size: 12px;
+            color: var(--spotify-text-muted);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .youtube-result-channel {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .youtube-result-duration {
+            background: var(--spotify-highlight);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .youtube-result-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .download-btn, .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn {
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+        }
+
+        .download-btn:hover {
+            background: var(--spotify-green-hover);
+            transform: scale(1.05);
+        }
+
+        .download-btn:disabled {
+            background: var(--spotify-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .refresh-btn {
+            background: var(--spotify-highlight);
+            color: var(--spotify-text);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: var(--spotify-base);
+            transform: scale(1.05);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--spotify-text-muted);
+            border-top: 2px solid var(--spotify-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Page Structure */
+        .page-content {
+            display: block;
+        }
+
+        .page-content.hidden {
+            display: none;
+        }
+
+        /* Music Page Styles */
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .local-search-container {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .local-search-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--spotify-base);
+            border: 1px solid var(--spotify-text-muted);
+            border-radius: 20px;
+            color: var(--spotify-text);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .local-search-input::placeholder {
+            color: var(--spotify-text-muted);
+        }
+
+        .local-search-input:focus {
+            outline: none;
+            border-color: var(--spotify-green);
+        }
+
+        .local-search-btn {
+            padding: 8px 16px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .local-search-btn:hover {
+            background: var(--spotify-green-hover);
+        }
+
+        .music-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .music-list-item {
+            background: var(--spotify-highlight);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .music-list-item:hover {
+            background: var(--spotify-base);
+            transform: translateX(4px);
+        }
+
+        .music-list-item.playing {
+            background: var(--spotify-base);
+            border-left: 4px solid var(--spotify-green);
+        }
+
+        .music-list-number {
+            width: 30px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--spotify-text-muted);
+            font-size: 14px;
+        }
+
+        .music-list-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .music-list-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .music-list-meta {
+            font-size: 12px;
+            color: var(--spotify-text-muted);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .music-list-size {
+            background: var(--spotify-highlight);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .music-list-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .music-list-play-btn, .music-list-delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .music-list-play-btn {
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+        }
+
+        .music-list-play-btn:hover {
+            background: var(--spotify-green-hover);
+            transform: scale(1.05);
+        }
+
+        .music-list-play-btn:disabled {
+            background: var(--spotify-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .music-list-delete-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .music-list-delete-btn:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+
+        .playing-indicator-list {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* Users Page Styles */
+        .users-detailed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .user-detail-card {
+            background: var(--spotify-highlight);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .user-detail-card:hover {
+            background: var(--spotify-base);
+            transform: translateY(-2px);
+        }
+
+        .user-detail-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--spotify-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 24px;
+            color: var(--spotify-black);
+            flex-shrink: 0;
+        }
+
+        .user-detail-info {
+            flex: 1;
+        }
+
+        .user-detail-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-detail-role {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .role-super-host {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+        }
+
+        .role-host {
+            background: var(--spotify-green);
+            color: var(--spotify-black);
+        }
+
+        .role-listener {
+            background: var(--spotify-highlight);
+            color: var(--spotify-text);
+        }
+
+        .user-detail-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--spotify-text-muted);
+        }
+
+        .user-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         /* Hidden class */
         .hidden {
             display: none !important;
@@ -757,15 +1269,15 @@
             </div>
 
             <div class="nav-section">
-                <div class="nav-item active">
+                <div class="nav-item active" data-page="home">
                     <span class="nav-icon">🏠</span>
                     <span>Home</span>
                 </div>
-                <div class="nav-item">
+                <div class="nav-item" data-page="music">
                     <span class="nav-icon">🎵</span>
                     <span>Music</span>
                 </div>
-                <div class="nav-item">
+                <div class="nav-item" data-page="users">
                     <span class="nav-icon">👥</span>
                     <span>Users</span>
                 </div>
@@ -790,33 +1302,82 @@
 
             <!-- Content Area -->
             <div class="content-area">
-                <!-- Room Section -->
-                <div class="room-section">
-                    <div class="room-info">
-                        <div class="room-header">
-                            <h2 class="room-name">🎵 Global Music Room</h2>
+                <!-- Home Page -->
+                <div id="homePage" class="page-content">
+                    <!-- Room Section -->
+                    <div class="room-section">
+                        <div class="room-info">
+                            <div class="room-header">
+                                <h2 class="room-name">🎵 Global Music Room</h2>
+                            </div>
+                            <p>Welcome to the shared music experience! The host controls what everyone hears.</p>
                         </div>
-                        <p>Welcome to the shared music experience! The host controls what everyone hears.</p>
+                    </div>
+
+                    <!-- YouTube Search -->
+                    <div class="room-section">
+                        <h3 class="section-title">🔍 Search YouTube Music</h3>
+                        <div class="youtube-search-container">
+                            <div class="search-input-group">
+                                <input type="text" id="youtubeSearchInput" class="youtube-search-input" placeholder="Search for music on YouTube...">
+                                <button id="youtubeSearchBtn" class="youtube-search-btn">🔍 Search</button>
+                            </div>
+                            <div id="youtubeSearchResults" class="youtube-search-results hidden">
+                                <!-- Search results will appear here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Connected Users -->
+                    <div class="room-section">
+                        <h3 class="section-title">👥 Connected Users (<span id="userCount">0</span>)</h3>
+                        <div class="users-grid" id="usersGrid">
+                            <!-- Users will be added here -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Music Library -->
-                <div class="room-section">
-                    <h3 class="section-title">🎵 Music Library</h3>
-                    <div class="music-grid" id="musicGrid">
-                        <div class="music-card">
-                            <div class="music-cover">🎵</div>
-                            <div class="music-title">Loading...</div>
-                            <div class="music-artist">Please wait</div>
+                <!-- Music Page -->
+                <div id="musicPage" class="page-content hidden">
+                    <!-- YouTube Search Section -->
+                    <div class="room-section">
+                        <h3 class="section-title">🔍 Download from YouTube</h3>
+                        <div class="youtube-search-container">
+                            <div class="search-input-group">
+                                <input type="text" id="youtubeSearchInputMusic" class="youtube-search-input" placeholder="Search for music on YouTube...">
+                                <button id="youtubeSearchBtnMusic" class="youtube-search-btn">🔍 Search</button>
+                            </div>
+                            <div id="youtubeSearchResultsMusic" class="youtube-search-results hidden">
+                                <!-- Search results will appear here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Local Music Library -->
+                    <div class="room-section">
+                        <div class="section-header">
+                            <h2 class="section-title">🎵 Music Library</h2>
+                            <div class="music-controls">
+                                <div class="local-search-container">
+                                    <input type="text" id="localMusicSearch" class="local-search-input" placeholder="Search local music...">
+                                    <button id="localSearchBtn" class="local-search-btn">🔍</button>
+                                </div>
+                                <button id="refreshMusicBtn" class="refresh-btn" title="Refresh music library">🔄</button>
+                            </div>
+                        </div>
+                        <div class="music-list" id="musicList">
+                            <!-- Music list will appear here -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Connected Users -->
-                <div class="room-section">
-                    <h3 class="section-title">👥 Connected Users (<span id="userCount">0</span>)</h3>
-                    <div class="users-grid" id="usersGrid">
-                        <!-- Users will be added here -->
+                <!-- Users Page -->
+                <div id="usersPage" class="page-content hidden">
+                    <div class="room-section">
+                        <h2 class="section-title">👥 Room Users</h2>
+                        <div class="users-detailed-list" id="usersDetailedList">
+                            <!-- Detailed user list will appear here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1094,10 +1655,19 @@
                     <div class="music-cover">🎵</div>
                     <div class="music-title">${track.originalName}</div>
                     <div class="music-artist">Local file</div>
+                    <div class="music-actions">
+                        <button class="delete-btn" onclick="deleteLocalMusic('${track.filename}', '${escapeHtml(track.originalName)}')" title="Delete this file">
+                            🗑️
+                        </button>
+                    </div>
                     ${currentTrack && currentTrack.filename === track.filename ? '<div class="playing-indicator">PLAYING</div>' : ''}
                 `;
 
-                musicCard.onclick = () => {
+                musicCard.onclick = (e) => {
+                    // Don't trigger play if clicking on delete button
+                    if (e.target.classList.contains('delete-btn')) {
+                        return;
+                    }
                     if (isHost) {
                         selectAndPlayTrack(track);
                     } else {
@@ -1221,6 +1791,15 @@
 
             socket.on('users-updated', (users) => {
                 updateUsersGrid(users);
+                // Also update detailed users list if users page is visible
+                const usersPage = document.getElementById('usersPage');
+                if (usersPage && !usersPage.classList.contains('hidden')) {
+                    loadUsersDetailedList();
+                }
+            });
+
+            socket.on('users-detailed', (users) => {
+                updateUsersDetailedList(users);
             });
 
             socket.on('track-playing', (data) => {
@@ -1303,6 +1882,207 @@
             }
         }
 
+        // YouTube Search functionality
+        let currentSearchResults = [];
+        let isSearching = false;
+
+        async function searchYouTube(page = 'home') {
+            if (isSearching) return;
+
+            const searchInput = page === 'home'
+                ? document.getElementById('youtubeSearchInput')
+                : document.getElementById('youtubeSearchInputMusic');
+            const searchBtn = page === 'home'
+                ? document.getElementById('youtubeSearchBtn')
+                : document.getElementById('youtubeSearchBtnMusic');
+            const searchResults = page === 'home'
+                ? document.getElementById('youtubeSearchResults')
+                : document.getElementById('youtubeSearchResultsMusic');
+
+            const query = searchInput.value.trim();
+
+            if (!query) {
+                logActivity('⚠️ Please enter a search query', 'system');
+                return;
+            }
+
+            isSearching = true;
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<span class="loading-spinner"></span> Searching...';
+            searchResults.classList.remove('hidden');
+            searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Searching YouTube...</div>';
+
+            try {
+                const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentSearchResults = data.results;
+                    displaySearchResults(data.results, page);
+                    logActivity(`🔍 Found ${data.results.length} results for "${query}"`, 'system');
+                } else {
+                    throw new Error(data.error || 'Search failed');
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                logActivity(`❌ Search failed: ${error.message}`, 'system');
+                searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff6b6b;">Search failed. Please try again.</div>';
+            } finally {
+                isSearching = false;
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '🔍 Search';
+            }
+        }
+
+        function displaySearchResults(results, page = 'home') {
+            const searchResults = page === 'home'
+                ? document.getElementById('youtubeSearchResults')
+                : document.getElementById('youtubeSearchResultsMusic');
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No results found</div>';
+                return;
+            }
+
+            searchResults.innerHTML = results.map(result => `
+                <div class="youtube-result-item">
+                    <div class="youtube-result-thumbnail">▶️</div>
+                    <div class="youtube-result-info">
+                        <div class="youtube-result-title">${escapeHtml(result.title)}</div>
+                        <div class="youtube-result-meta">
+                            <span class="youtube-result-channel">${escapeHtml(result.channel)}</span>
+                            <span class="youtube-result-duration">${formatDuration(result.duration)}</span>
+                        </div>
+                    </div>
+                    <div class="youtube-result-actions">
+                        <button class="download-btn" id="download-${result.videoId}" onclick="downloadFromYouTube('${result.videoId}', '${escapeHtml(result.title)}')">
+                            📥 Download
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        let downloadingVideoId = null;
+
+        async function deleteLocalMusic(filename, originalName) {
+            if (!confirm(`Are you sure you want to delete "${originalName}"?`)) {
+                return;
+            }
+
+            try {
+                // Properly encode the filename for URL
+                const encodedFilename = encodeURIComponent(filename);
+
+                const response = await fetch(`/api/music/${encodedFilename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    logActivity(`🗑️ Deleted: ${originalName}`, 'system');
+
+                    // Remove from music queue if it's there
+                    musicQueue = musicQueue.filter(track => track.filename !== filename);
+
+                    // Clear current track if it was deleted
+                    if (currentTrack && currentTrack.filename === filename) {
+                        currentTrack = null;
+                        if (audioPlayer) {
+                            audioPlayer.pause();
+                            audioPlayer.src = '';
+                        }
+                        updateNowPlaying();
+                        updatePlayButton();
+                    }
+
+                    updateMusicGrid();
+                    // Also update the music list if it's visible
+                    const musicPage = document.getElementById('musicPage');
+                    if (musicPage && !musicPage.classList.contains('hidden')) {
+                        loadMusicList(document.getElementById('localMusicSearch').value);
+                    }
+                } else {
+                    throw new Error(data.error || 'Delete failed');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                logActivity(`❌ Delete failed: ${error.message}`, 'system');
+            }
+        }
+
+        async function downloadFromYouTube(videoId, title) {
+            if (downloadingVideoId) {
+                logActivity('⚠️ Another download is in progress', 'system');
+                return;
+            }
+
+            downloadingVideoId = videoId;
+            logActivity(`📥 Starting download: ${title}`, 'system');
+
+            // Update only the specific download button
+            const downloadBtn = document.getElementById(`download-${videoId}`);
+            if (downloadBtn) {
+                downloadBtn.disabled = true;
+                downloadBtn.innerHTML = '<span class="loading-spinner"></span> Downloading...';
+            }
+
+            try {
+                const response = await fetch('/api/youtube/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ videoId, title })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    logActivity(`✅ Downloaded: ${data.filename}`, 'system');
+
+                    // Refresh the music library after a short delay
+                    setTimeout(() => {
+                        loadMusic();
+                        loadMusicList(); // Also refresh the music list view
+                    }, 1000);
+
+                    // Clear search results from both pages
+                    document.getElementById('youtubeSearchInput').value = '';
+                    document.getElementById('youtubeSearchResults').classList.add('hidden');
+                    document.getElementById('youtubeSearchInputMusic').value = '';
+                    document.getElementById('youtubeSearchResultsMusic').classList.add('hidden');
+                    currentSearchResults = [];
+                } else {
+                    throw new Error(data.error || 'Download failed');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                logActivity(`❌ Download failed: ${error.message}`, 'system');
+            } finally {
+                downloadingVideoId = null;
+                // Reset only the specific download button
+                if (downloadBtn) {
+                    downloadBtn.disabled = false;
+                    downloadBtn.innerHTML = '📥 Download';
+                }
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return '?:??';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
         // Control button handlers
         document.getElementById('playBtn').addEventListener('click', () => {
             if (!isHost) return;
@@ -1360,6 +2140,168 @@
             logActivity(`🔁 Repeat mode: ${repeatMode}`, 'system');
         });
 
+        // Page Navigation
+        function showPage(pageName) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.add('hidden');
+            });
+
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Show selected page
+            const selectedPage = document.getElementById(pageName + 'Page');
+            if (selectedPage) {
+                selectedPage.classList.remove('hidden');
+            }
+
+            // Add active class to selected nav item
+            const selectedNavItem = document.querySelector(`[data-page="${pageName}"]`);
+            if (selectedNavItem) {
+                selectedNavItem.classList.add('active');
+            }
+
+            // Load page-specific data
+            if (pageName === 'music') {
+                loadMusicList();
+            } else if (pageName === 'users') {
+                loadUsersDetailedList();
+            }
+        }
+
+        // Load music list with search functionality
+        function loadMusicList(searchQuery = '') {
+            try {
+                const musicList = document.getElementById('musicList');
+                musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Loading music library...</div>';
+
+                fetch('/api/music')
+                    .then(res => res.json())
+                    .then(files => {
+                        let filteredFiles = files;
+
+                        if (searchQuery) {
+                            filteredFiles = files.filter(file =>
+                                file.originalName.toLowerCase().includes(searchQuery.toLowerCase())
+                            );
+                        }
+
+                        if (filteredFiles.length === 0) {
+                            musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No music files found</div>';
+                            return;
+                        }
+
+                        musicList.innerHTML = filteredFiles.map((file, index) => `
+                            <div class="music-list-item ${currentTrack && currentTrack.filename === file.filename ? 'playing' : ''}" onclick="playTrackFromList('${file.filename}')">
+                                <div class="music-list-number">${index + 1}</div>
+                                <div class="music-list-info">
+                                    <div class="music-list-title">${escapeHtml(file.originalName)}</div>
+                                    <div class="music-list-meta">
+                                        <span>📁 ${formatFileSize(file.size)}</span>
+                                        <span>📅 ${new Date(file.addedAt).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                                <div class="music-list-actions">
+                                    <button class="music-list-play-btn" onclick="event.stopPropagation(); playTrackFromList('${file.filename}')" ${!isHost ? 'disabled' : ''}>
+                                        ${currentTrack && currentTrack.filename === file.filename ? '⏸️ Pause' : '▶️ Play'}
+                                    </button>
+                                    <button class="music-list-delete-btn" onclick="event.stopPropagation(); deleteLocalMusic('${file.filename}', '${escapeHtml(file.originalName)}')">
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                                ${currentTrack && currentTrack.filename === file.filename ? '<div class="playing-indicator-list">PLAYING</div>' : ''}
+                            </div>
+                        `).join('');
+                    })
+                    .catch(error => {
+                        console.error('Load music list error:', error);
+                        musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff6b6b;">Failed to load music library</div>';
+                    });
+            } catch (error) {
+                console.error('Load music list error:', error);
+            }
+        }
+
+        // Play track from list
+        function playTrackFromList(filename) {
+            if (!isHost) {
+                logActivity('❌ Only hosts can control music', 'system');
+                return;
+            }
+
+            const track = musicQueue.find(file => file.filename === filename);
+            if (track) {
+                selectAndPlayTrack(track);
+                // Update the music list to show playing state
+                loadMusicList(document.getElementById('localMusicSearch').value);
+            }
+        }
+
+        // Load detailed users list
+        function loadUsersDetailedList() {
+            try {
+                const usersDetailedList = document.getElementById('usersDetailedList');
+                usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Loading users...</div>';
+
+                // Request current users from room
+                socket.emit('get-users');
+            } catch (error) {
+                console.error('Load users error:', error);
+            }
+        }
+
+        // Update detailed users list
+        function updateUsersDetailedList(users) {
+            try {
+                const usersDetailedList = document.getElementById('usersDetailedList');
+
+                if (users.length === 0) {
+                    usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No users connected</div>';
+                    return;
+                }
+
+                usersDetailedList.innerHTML = users.map(user => `
+                    <div class="user-detail-card">
+                        <div class="user-detail-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                        <div class="user-detail-info">
+                            <div class="user-detail-name">
+                                ${user.username}
+                                ${user.isSuperHost ? '<span class="user-detail-role role-super-host">👑 Super Host</span>' : user.isHost ? '<span class="user-detail-role role-host">🎤 Host</span>' : '<span class="user-detail-role role-listener">🎧 Listener</span>'}
+                            </div>
+                            <div class="user-detail-stats">
+                                <div class="user-stat">
+                                    <span>🕐</span>
+                                    <span>Joined: ${new Date(user.joinedAt).toLocaleTimeString()}</span>
+                                </div>
+                                <div class="user-stat">
+                                    <span>⏱️</span>
+                                    <span>Duration: ${user.duration}m</span>
+                                </div>
+                                <div class="user-stat">
+                                    <span>🎵</span>
+                                    <span>Status: ${user.status}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Update users error:', error);
+            }
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             initializeAudioPlayer();
@@ -1375,6 +2317,55 @@
                 if (e.key === 'Enter') {
                     joinRoom();
                 }
+            });
+
+            // Sidebar navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const pageName = item.getAttribute('data-page');
+                    showPage(pageName);
+                });
+            });
+
+            // YouTube search event listeners (Home page)
+            document.getElementById('youtubeSearchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchYouTube('home');
+                }
+            });
+
+            document.getElementById('youtubeSearchBtn').addEventListener('click', () => {
+                searchYouTube('home');
+            });
+
+            // YouTube search event listeners (Music page)
+            document.getElementById('youtubeSearchInputMusic').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchYouTube('music');
+                }
+            });
+
+            document.getElementById('youtubeSearchBtnMusic').addEventListener('click', () => {
+                searchYouTube('music');
+            });
+
+            // Local music search
+            document.getElementById('localMusicSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loadMusicList(e.target.value);
+                }
+            });
+
+            document.getElementById('localSearchBtn').addEventListener('click', () => {
+                const searchQuery = document.getElementById('localMusicSearch').value;
+                loadMusicList(searchQuery);
+            });
+
+            // Refresh music library button
+            document.getElementById('refreshMusicBtn').addEventListener('click', () => {
+                loadMusicList();
+                loadMusic();
+                logActivity('🔄 Refreshed music library', 'system');
             });
 
             document.getElementById('joinBtn').addEventListener('click', joinRoom);

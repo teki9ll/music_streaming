@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
+const { exec } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -78,12 +79,14 @@ class Room {
   }
 
   addUser(socket, username, isHost = false, isSuperHost = false) {
+    const joinTime = new Date();
     this.users.set(socket.id, {
       username,
       isHost,
       isSuperHost,
       socket,
-      joinedAt: new Date()
+      joinedAt: joinTime,
+      duration: 0
     });
     return this.users.get(socket.id);
   }
@@ -128,6 +131,22 @@ class Room {
       isSuperHost: user.isSuperHost,
       joinedAt: user.joinedAt
     }));
+  }
+
+  getConnectedUsersDetailed() {
+    const now = new Date();
+    return Array.from(this.users.entries()).map(([socketId, user]) => {
+      const duration = Math.floor((now - user.joinedAt) / 1000 / 60); // Duration in minutes
+      return {
+        id: socketId,
+        username: user.username,
+        isHost: user.isHost,
+        isSuperHost: user.isSuperHost,
+        joinedAt: user.joinedAt,
+        duration: duration,
+        status: this.isPlaying ? 'Playing' : 'Idle'
+      };
+    });
   }
 }
 
@@ -225,6 +244,166 @@ app.get('/api/music', (req, res) => {
     res.status(500).json({ error: 'Failed to read music directory' });
   }
 });
+
+// Delete music file
+app.delete('/api/music/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    // Decode the URL-encoded filename
+    const decodedFilename = decodeURIComponent(filename);
+    const filePath = path.join(__dirname, 'music', decodedFilename);
+
+    console.log('Delete request - Original filename:', filename);
+    console.log('Delete request - Decoded filename:', decodedFilename);
+    console.log('Delete request - File path:', filePath);
+
+    // Validate filename to prevent directory traversal (allow Unicode but block path traversal)
+    if (decodedFilename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename: path traversal not allowed' });
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Delete the file
+    fs.unlinkSync(filePath);
+
+    res.json({ message: 'File deleted successfully' });
+  } catch (error) {
+    console.error('Delete error:', error);
+    res.status(500).json({ error: 'Failed to delete file: ' + error.message });
+  }
+});
+
+// YouTube search endpoint
+app.get('/api/youtube/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    // Use yt-dlp to search YouTube
+    const searchCommand = `yt-dlp "ytsearch10:${q}" --flat-playlist --print-json --no-warnings`;
+
+    exec(searchCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+      if (error) {
+        console.error('YouTube search error:', error);
+        return res.status(500).json({ error: 'Failed to search YouTube' });
+      }
+
+      try {
+        const lines = stdout.trim().split('\n').filter(line => line.trim());
+        const results = lines.map(line => {
+          try {
+            const video = JSON.parse(line);
+            return {
+              videoId: video.id,
+              title: video.title,
+              channel: video.uploader || video.channel || 'Unknown',
+              duration: video.duration,
+              url: video.webpage_url,
+              thumbnail: video.thumbnail
+            };
+          } catch (parseError) {
+            console.error('Parse error:', parseError);
+            return null;
+          }
+        }).filter(Boolean);
+
+        res.json({ results });
+      } catch (parseError) {
+        console.error('Parse error:', parseError);
+        res.status(500).json({ error: 'Failed to parse search results' });
+      }
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Failed to search YouTube' });
+  }
+});
+
+// YouTube download endpoint
+app.post('/api/youtube/download', async (req, res) => {
+  try {
+    const { videoId, title } = req.body;
+
+    if (!videoId) {
+      return res.status(400).json({ error: 'Video ID is required' });
+    }
+
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const filename = `${Date.now()}-${sanitizeFilename(title)}.mp3`;
+    const outputPath = path.join(__dirname, 'music', filename);
+
+    console.log(`Starting download: ${videoUrl} -> ${filename}`);
+
+    // Download and convert to MP3 using yt-dlp
+    const downloadCommand = `yt-dlp "${videoUrl}" --extract-audio --audio-format mp3 --audio-quality 0 -o "${outputPath.replace('.mp3', '.%(ext)s')}" --no-warnings`;
+
+    exec(downloadCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+      if (error) {
+        console.error('YouTube download error:', error);
+        return res.status(500).json({ error: 'Failed to download and convert video' });
+      }
+
+      // Find the actual filename (yt-dlp might modify it)
+      try {
+        const musicDir = path.join(__dirname, 'music');
+        const files = fs.readdirSync(musicDir);
+
+        // Look for files that start with our timestamp (within the last minute)
+        const timestamp = Date.now();
+        const recentFiles = files.filter(file => {
+          const fileTimestamp = parseInt(file.split('-')[0]);
+          return fileTimestamp && (timestamp - fileTimestamp) < 60000; // Files from last 60 seconds
+        });
+
+        // Sort by timestamp and get the most recent one
+        recentFiles.sort((a, b) => {
+          const timeA = parseInt(a.split('-')[0]) || 0;
+          const timeB = parseInt(b.split('-')[0]) || 0;
+          return timeB - timeA; // Descending order
+        });
+
+        const downloadedFile = recentFiles.find(file => file.endsWith('.mp3'));
+        console.log('Looking for downloaded file, found recent files:', recentFiles);
+
+        if (downloadedFile) {
+          const stats = fs.statSync(path.join(musicDir, downloadedFile));
+          res.json({
+            filename: downloadedFile,
+            originalName: title,
+            url: `/music/${downloadedFile}`,
+            size: stats.size
+          });
+        } else {
+          console.error('No recent MP3 file found. All files:', files);
+          res.status(500).json({ error: 'Downloaded file not found' });
+        }
+      } catch (findError) {
+        console.error('Find downloaded file error:', findError);
+        res.status(500).json({ error: 'Failed to locate downloaded file' });
+      }
+    });
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).json({ error: 'Failed to download video' });
+  }
+});
+
+// Helper function to sanitize filenames
+function sanitizeFilename(filename) {
+  return filename
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 100); // Limit length
+}
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -499,6 +678,19 @@ io.on('connection', (socket) => {
     if (room && room.isPlaying) {
       room.currentTime = currentTime;
     }
+  });
+
+  // Get detailed users list
+  socket.on('get-users', () => {
+    const room = rooms[DEFAULT_ROOM_ID];
+
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+
+    const detailedUsers = room.getConnectedUsersDetailed();
+    socket.emit('users-detailed', detailedUsers);
   });
 
   // Handle disconnection
