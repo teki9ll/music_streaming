@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Spotify Room - Music Together</title>
+    <title>🎵 ShubhTej Room - Music Together</title>
     <script src="/socket.io/socket.io.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,20 +16,20 @@
         }
 
         :root {
-            --spotify-black: #121212;
-            --spotify-base: #181818;
-            --spotify-highlight: #282828;
-            --spotify-text: #ffffff;
-            --spotify-text-muted: #b3b3b3;
-            --spotify-green: #1db954;
-            --spotify-green-hover: #1ed760;
-            --spotify-green-active: #1aa34a;
+            --shubhtej-black: #121212;
+            --shubhtej-base: #181818;
+            --shubhtej-highlight: #282828;
+            --shubhtej-text: #ffffff;
+            --shubhtej-text-muted: #b3b3b3;
+            --shubhtej-pink: #ff69b4;
+            --shubhtej-pink-hover: #ff85c1;
+            --shubhtej-pink-active: #ff4d94;
         }
 
         body {
             font-family: 'Circular Std', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--spotify-black);
-            color: var(--spotify-text);
+            background: var(--shubhtej-black);
+            color: var(--shubhtej-text);
             height: 100vh;
             overflow: hidden;
             user-select: none;
@@ -43,7 +43,7 @@
         /* Sidebar */
         .sidebar {
             width: 240px;
-            background: var(--spotify-black);
+            background: var(--shubhtej-black);
             padding: 24px 0;
             display: flex;
             flex-direction: column;
@@ -57,7 +57,7 @@
         .spotify-logo h1 {
             font-size: 28px;
             font-weight: 900;
-            background: var(--spotify-green);
+            background: var(--shubhtej-pink);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -80,13 +80,13 @@
         }
 
         .nav-item:hover {
-            background: var(--spotify-highlight);
-            color: var(--spotify-text);
+            background: var(--shubhtej-highlight);
+            color: var(--shubhtej-text);
         }
 
         .nav-item.active {
-            background: var(--spotify-highlight);
-            color: var(--spotify-text);
+            background: var(--shubhtej-highlight);
+            color: var(--shubhtej-text);
         }
 
         .nav-icon {
@@ -98,17 +98,17 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: linear-gradient(180deg, #1a1a1a 0%, var(--spotify-black) 100%);
+            background: linear-gradient(180deg, #1a1a1a 0%, var(--shubhtej-black) 100%);
         }
 
         /* Top Bar */
         .top-bar {
-            background: var(--spotify-black);
+            background: var(--shubhtej-black);
             padding: 16px 32px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--spotify-highlight);
+            border-bottom: 1px solid var(--shubhtej-highlight);
         }
 
         .user-info {
@@ -121,7 +121,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: var(--spotify-green);
+            background: var(--shubhtej-pink);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -141,12 +141,12 @@
 
         .user-role {
             font-size: 11px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .host-badge {
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 10px;
@@ -173,7 +173,7 @@
         }
 
         .room-info {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 8px;
             padding: 24px;
             margin-bottom: 32px;
@@ -192,7 +192,7 @@
         }
 
         .room-id {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 12px;
@@ -209,7 +209,7 @@
         }
 
         .music-card {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 8px;
             padding: 16px;
             cursor: pointer;
@@ -219,19 +219,19 @@
         }
 
         .music-card:hover {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             transform: translateY(-4px);
         }
 
         .music-card.playing {
-            background: var(--spotify-highlight);
-            border: 2px solid var(--spotify-green);
+            background: var(--shubhtej-highlight);
+            border: 2px solid var(--shubhtej-pink);
         }
 
         .music-cover {
             width: 100%;
             aspect-ratio: 1;
-            background: linear-gradient(135deg, var(--spotify-green), #1aa34a);
+            background: linear-gradient(135deg, var(--shubhtej-pink), #1aa34a);
             border-radius: 4px;
             margin-bottom: 12px;
             display: flex;
@@ -251,7 +251,7 @@
 
         .music-artist {
             font-size: 12px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -292,10 +292,10 @@
 
         .playing-indicator {
             position: absolute;
-            top: 8px;
+            bottom: 8px;
             right: 8px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 10px;
@@ -310,7 +310,7 @@
         }
 
         .user-card {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 8px;
             padding: 16px;
             display: flex;
@@ -320,14 +320,14 @@
         }
 
         .user-card:hover {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
         }
 
         .user-card-avatar {
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: var(--spotify-green);
+            background: var(--shubhtej-pink);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -346,12 +346,12 @@
 
         .user-card-role {
             font-size: 12px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .make-host-btn {
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             border: none;
             padding: 6px 12px;
             border-radius: 16px;
@@ -362,13 +362,13 @@
         }
 
         .make-host-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
         }
 
         /* Player Bar */
         .player-bar {
-            background: var(--spotify-base);
-            border-top: 1px solid var(--spotify-highlight);
+            background: var(--shubhtej-base);
+            border-top: 1px solid var(--shubhtej-highlight);
             padding: 16px 32px;
             display: flex;
             align-items: center;
@@ -392,7 +392,7 @@
 
         .now-playing-artist {
             font-size: 11px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -415,7 +415,7 @@
         .control-btn {
             background: none;
             border: none;
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             cursor: pointer;
             transition: all 0.2s ease;
             padding: 4px;
@@ -426,12 +426,12 @@
         }
 
         .control-btn:hover {
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             transform: scale(1.1);
         }
 
         .control-btn:disabled {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             cursor: not-allowed;
             transform: none;
         }
@@ -439,18 +439,18 @@
         .play-btn {
             width: 40px;
             height: 40px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             font-size: 18px;
         }
 
         .play-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
         }
 
         .play-btn:disabled {
-            background: var(--spotify-text-muted);
-            color: var(--spotify-black);
+            background: var(--shubhtej-text-muted);
+            color: var(--shubhtej-black);
         }
 
         .progress-container {
@@ -464,7 +464,7 @@
         .progress-bar {
             flex: 1;
             height: 4px;
-            background: var(--spotify-text-muted);
+            background: var(--shubhtej-text-muted);
             border-radius: 2px;
             position: relative;
             cursor: pointer;
@@ -472,7 +472,7 @@
 
         .progress-fill {
             height: 100%;
-            background: var(--spotify-text);
+            background: var(--shubhtej-text);
             border-radius: 2px;
             width: 0%;
             transition: width 0.1s ease;
@@ -486,14 +486,14 @@
             top: -4px;
             width: 12px;
             height: 12px;
-            background: var(--spotify-text);
+            background: var(--shubhtej-text);
             border-radius: 50%;
             box-shadow: 0 0 4px rgba(0,0,0,0.3);
         }
 
         .time {
             font-size: 11px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             font-weight: 600;
             min-width: 40px;
         }
@@ -509,7 +509,7 @@
         .extra-btn {
             background: none;
             border: none;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             cursor: pointer;
             transition: all 0.2s ease;
             padding: 4px;
@@ -521,16 +521,16 @@
         }
 
         .extra-btn:hover {
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             transform: scale(1.1);
         }
 
         .extra-btn.active {
-            color: var(--spotify-green);
+            color: var(--shubhtej-pink);
         }
 
         .extra-btn:disabled {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             cursor: not-allowed;
             opacity: 0.5;
         }
@@ -538,9 +538,9 @@
         /* Activity Panel */
         .activity-panel {
             width: 320px;
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             padding: 24px;
-            border-left: 1px solid var(--spotify-highlight);
+            border-left: 1px solid var(--shubhtej-highlight);
             overflow-y: auto;
         }
 
@@ -549,7 +549,7 @@
             font-weight: 700;
             margin-bottom: 20px;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--spotify-highlight);
+            border-bottom: 1px solid var(--shubhtej-highlight);
         }
 
         .activity-log {
@@ -560,7 +560,7 @@
 
         .activity-item {
             padding: 12px;
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 6px;
             font-size: 13px;
             line-height: 1.4;
@@ -568,16 +568,16 @@
 
         .activity-time {
             font-size: 10px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             margin-bottom: 4px;
             font-family: monospace;
         }
 
         .activity-message {
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
         }
 
-        .activity-join { border-left: 3px solid var(--spotify-green); }
+        .activity-join { border-left: 3px solid var(--shubhtej-pink); }
         .activity-leave { border-left: 3px solid #ff6b6b; }
         .activity-music { border-left: 3px solid #ffd93d; }
         .activity-system { border-left: 3px solid #6c5ce7; }
@@ -695,7 +695,7 @@
         }
 
         .modal {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             border-radius: 8px;
             padding: 32px;
             width: 90%;
@@ -711,7 +711,7 @@
         }
 
         .modal-subtitle {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             margin-bottom: 24px;
             text-align: center;
         }
@@ -723,28 +723,28 @@
         .input-field {
             width: 100%;
             padding: 12px 16px;
-            background: var(--spotify-highlight);
-            border: 1px solid var(--spotify-text-muted);
+            background: var(--shubhtej-highlight);
+            border: 1px solid var(--shubhtej-text-muted);
             border-radius: 4px;
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             font-size: 14px;
             font-weight: 500;
         }
 
         .input-field::placeholder {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .input-field:focus {
             outline: none;
-            border-color: var(--spotify-green);
+            border-color: var(--shubhtej-pink);
         }
 
         .join-btn {
             width: 100%;
             padding: 12px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             border: none;
             border-radius: 24px;
             font-size: 14px;
@@ -754,19 +754,19 @@
         }
 
         .join-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
             transform: scale(1.02);
         }
 
         .join-btn:disabled {
-            background: var(--spotify-text-muted);
+            background: var(--shubhtej-text-muted);
             cursor: not-allowed;
             transform: none;
         }
 
         /* YouTube Search Styles */
         .youtube-search-container {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 24px;
@@ -781,29 +781,29 @@
         .youtube-search-input {
             flex: 1;
             padding: 12px 16px;
-            background: var(--spotify-base);
-            border: 1px solid var(--spotify-text-muted);
+            background: var(--shubhtej-base);
+            border: 1px solid var(--shubhtej-text-muted);
             border-radius: 24px;
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
         }
 
         .youtube-search-input::placeholder {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .youtube-search-input:focus {
             outline: none;
-            border-color: var(--spotify-green);
+            border-color: var(--shubhtej-pink);
             box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2);
         }
 
         .youtube-search-btn {
             padding: 12px 24px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             border: none;
             border-radius: 24px;
             font-size: 14px;
@@ -814,12 +814,12 @@
         }
 
         .youtube-search-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
             transform: scale(1.02);
         }
 
         .youtube-search-btn:disabled {
-            background: var(--spotify-text-muted);
+            background: var(--shubhtej-text-muted);
             cursor: not-allowed;
             transform: none;
         }
@@ -831,7 +831,7 @@
         }
 
         .youtube-result-item {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 8px;
@@ -842,7 +842,7 @@
         }
 
         .youtube-result-item:hover {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
         }
 
         .youtube-result-thumbnail {
@@ -870,12 +870,12 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
         }
 
         .youtube-result-meta {
             font-size: 12px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             display: flex;
             gap: 8px;
             align-items: center;
@@ -888,7 +888,7 @@
         }
 
         .youtube-result-duration {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
@@ -912,17 +912,23 @@
         }
 
         .download-btn {
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
         }
 
         .download-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
             transform: scale(1.05);
         }
 
         .download-btn:disabled {
-            background: var(--spotify-text-muted);
+            background: var(--shubhtej-text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .download-btn.downloaded {
+            background: var(--shubhtej-pink);
             cursor: not-allowed;
             transform: none;
         }
@@ -945,8 +951,8 @@
         }
 
         .refresh-btn {
-            background: var(--spotify-highlight);
-            color: var(--spotify-text);
+            background: var(--shubhtej-highlight);
+            color: var(--shubhtej-text);
             border: none;
             padding: 8px 12px;
             border-radius: 20px;
@@ -956,7 +962,7 @@
         }
 
         .refresh-btn:hover {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             transform: scale(1.05);
         }
 
@@ -964,8 +970,8 @@
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid var(--spotify-text-muted);
-            border-top: 2px solid var(--spotify-green);
+            border: 2px solid var(--shubhtej-text-muted);
+            border-top: 2px solid var(--shubhtej-pink);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -1002,27 +1008,27 @@
         .local-search-input {
             flex: 1;
             padding: 8px 12px;
-            background: var(--spotify-base);
-            border: 1px solid var(--spotify-text-muted);
+            background: var(--shubhtej-base);
+            border: 1px solid var(--shubhtej-text-muted);
             border-radius: 20px;
-            color: var(--spotify-text);
+            color: var(--shubhtej-text);
             font-size: 14px;
             transition: all 0.2s ease;
         }
 
         .local-search-input::placeholder {
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .local-search-input:focus {
             outline: none;
-            border-color: var(--spotify-green);
+            border-color: var(--shubhtej-pink);
         }
 
         .local-search-btn {
             padding: 8px 16px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             border: none;
             border-radius: 20px;
             font-size: 14px;
@@ -1032,7 +1038,7 @@
         }
 
         .local-search-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
         }
 
         .music-list {
@@ -1043,7 +1049,7 @@
         }
 
         .music-list-item {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 8px;
             padding: 16px;
             display: flex;
@@ -1055,20 +1061,20 @@
         }
 
         .music-list-item:hover {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             transform: translateX(4px);
         }
 
         .music-list-item.playing {
-            background: var(--spotify-base);
-            border-left: 4px solid var(--spotify-green);
+            background: var(--shubhtej-base);
+            border-left: 4px solid var(--shubhtej-pink);
         }
 
         .music-list-number {
             width: 30px;
             text-align: center;
             font-weight: 600;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             font-size: 14px;
         }
 
@@ -1088,14 +1094,14 @@
 
         .music-list-meta {
             font-size: 12px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
             display: flex;
             gap: 12px;
             align-items: center;
         }
 
         .music-list-size {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 11px;
@@ -1118,17 +1124,17 @@
         }
 
         .music-list-play-btn {
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
         }
 
         .music-list-play-btn:hover {
-            background: var(--spotify-green-hover);
+            background: var(--shubhtej-pink-hover);
             transform: scale(1.05);
         }
 
         .music-list-play-btn:disabled {
-            background: var(--spotify-text-muted);
+            background: var(--shubhtej-text-muted);
             cursor: not-allowed;
             transform: none;
         }
@@ -1145,10 +1151,10 @@
 
         .playing-indicator-list {
             position: absolute;
-            top: 8px;
+            bottom: 8px;
             right: 8px;
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 10px;
@@ -1164,7 +1170,7 @@
         }
 
         .user-detail-card {
-            background: var(--spotify-highlight);
+            background: var(--shubhtej-highlight);
             border-radius: 12px;
             padding: 20px;
             display: flex;
@@ -1174,7 +1180,7 @@
         }
 
         .user-detail-card:hover {
-            background: var(--spotify-base);
+            background: var(--shubhtej-base);
             transform: translateY(-2px);
         }
 
@@ -1182,13 +1188,13 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: var(--spotify-green);
+            background: var(--shubhtej-pink);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 24px;
-            color: var(--spotify-black);
+            color: var(--shubhtej-black);
             flex-shrink: 0;
         }
 
@@ -1220,13 +1226,13 @@
         }
 
         .role-host {
-            background: var(--spotify-green);
-            color: var(--spotify-black);
+            background: var(--shubhtej-pink);
+            color: var(--shubhtej-black);
         }
 
         .role-listener {
-            background: var(--spotify-highlight);
-            color: var(--spotify-text);
+            background: var(--shubhtej-highlight);
+            color: var(--shubhtej-text);
         }
 
         .user-detail-stats {
@@ -1234,7 +1240,7 @@
             gap: 16px;
             margin-top: 8px;
             font-size: 12px;
-            color: var(--spotify-text-muted);
+            color: var(--shubhtej-text-muted);
         }
 
         .user-stat {
@@ -1265,7 +1271,7 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="spotify-logo">
-                <h1>Spotify Room</h1>
+                <h1>ShubhTej Room</h1>
             </div>
 
             <div class="nav-section">
@@ -1325,6 +1331,20 @@
                             <div id="youtubeSearchResults" class="youtube-search-results hidden">
                                 <!-- Search results will appear here -->
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Local Music Library -->
+                    <div class="room-section">
+                        <h3 class="section-title">🎵 Local Music Library</h3>
+                        <div class="local-music-controls">
+                            <div class="search-input-group">
+                                <input type="text" id="localMusicSearchHome" class="local-search-input" placeholder="Search local music..." style="flex: 1; margin-bottom: 10px;">
+                                <button id="refreshMusicBtnHome" class="refresh-btn" title="Refresh music library">🔄</button>
+                            </div>
+                        </div>
+                        <div class="music-grid" id="homeMusicGrid">
+                            <!-- Local music will appear here -->
                         </div>
                     </div>
 
@@ -1625,7 +1645,8 @@
             }
 
             updateNowPlaying();
-            updateMusicGrid();
+            updateHomeMusicGrid();
+            loadMusicList(); // Refresh the music sidebar list
         }
 
         // Update now playing display
@@ -1639,12 +1660,26 @@
             }
         }
 
-        // Update music grid
-        function updateMusicGrid() {
-            const musicGrid = document.getElementById('musicGrid');
-            musicGrid.innerHTML = '';
+        // Update home music grid
+        function updateHomeMusicGrid(searchTerm = '') {
+            const homeMusicGrid = document.getElementById('homeMusicGrid');
+            if (!homeMusicGrid) return;
 
-            musicQueue.forEach((track, index) => {
+            // Filter music based on search term
+            const filteredFiles = searchTerm
+                ? musicQueue.filter(file =>
+                    file.originalName.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                : musicQueue;
+
+            homeMusicGrid.innerHTML = '';
+
+            if (filteredFiles.length === 0) {
+                homeMusicGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--shubhtej-text-muted);">No music files found</div>';
+                return;
+            }
+
+            filteredFiles.forEach((track, index) => {
                 const musicCard = document.createElement('div');
                 musicCard.className = 'music-card';
                 if (currentTrack && currentTrack.filename === track.filename) {
@@ -1675,10 +1710,11 @@
                     }
                 };
 
-                musicGrid.appendChild(musicCard);
+                homeMusicGrid.appendChild(musicCard);
             });
         }
 
+        
         // Update users grid
         function updateUsersGrid(users) {
             const usersGrid = document.getElementById('usersGrid');
@@ -1816,7 +1852,8 @@
                 }
 
                 updateNowPlaying();
-                updateMusicGrid();
+                updateHomeMusicGrid();
+                loadMusicList();
                 updatePlayButton();
             });
 
@@ -1875,7 +1912,8 @@
                 musicQueue = files;
                 currentQueueIndex = 0;
 
-                updateMusicGrid();
+                updateHomeMusicGrid();
+                loadMusicList(); // Load the music sidebar list
                 logActivity(`📁 Loaded ${files.length} music files`, 'system');
             } catch (error) {
                 logActivity(`❌ Failed to load music: ${error.message}`, 'system');
@@ -1910,7 +1948,7 @@
             searchBtn.disabled = true;
             searchBtn.innerHTML = '<span class="loading-spinner"></span> Searching...';
             searchResults.classList.remove('hidden');
-            searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Searching YouTube...</div>';
+            searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">Searching YouTube...</div>';
 
             try {
                 const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
@@ -1918,6 +1956,12 @@
 
                 if (response.ok) {
                     currentSearchResults = data.results;
+
+                    // Make sure music queue is loaded for duplicate checking
+                    if (musicQueue.length === 0) {
+                        await loadMusic();
+                    }
+
                     displaySearchResults(data.results, page);
                     logActivity(`🔍 Found ${data.results.length} results for "${query}"`, 'system');
                 } else {
@@ -1940,27 +1984,47 @@
                 : document.getElementById('youtubeSearchResultsMusic');
 
             if (results.length === 0) {
-                searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No results found</div>';
+                searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">No results found</div>';
                 return;
             }
 
-            searchResults.innerHTML = results.map(result => `
-                <div class="youtube-result-item">
-                    <div class="youtube-result-thumbnail">▶️</div>
-                    <div class="youtube-result-info">
-                        <div class="youtube-result-title">${escapeHtml(result.title)}</div>
-                        <div class="youtube-result-meta">
-                            <span class="youtube-result-channel">${escapeHtml(result.channel)}</span>
-                            <span class="youtube-result-duration">${formatDuration(result.duration)}</span>
+            searchResults.innerHTML = results.map(result => {
+                const isDownloaded = checkIfSongAlreadyDownloaded(result.title);
+
+                return `
+                    <div class="youtube-result-item">
+                        <div class="youtube-result-thumbnail">▶️</div>
+                        <div class="youtube-result-info">
+                            <div class="youtube-result-title">${escapeHtml(result.title)}</div>
+                            <div class="youtube-result-meta">
+                                <span class="youtube-result-channel">${escapeHtml(result.channel)}</span>
+                                <span class="youtube-result-duration">${formatDuration(result.duration)}</span>
+                                ${isDownloaded ? '<span style="color: var(--shubhtej-pink); font-weight: 600;">✓ Downloaded</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="youtube-result-actions">
+                            <button class="download-btn ${isDownloaded ? 'downloaded' : ''}"
+                                    id="download-${result.videoId}"
+                                    onclick="downloadFromYouTube('${result.videoId}', '${escapeHtml(result.title)}')"
+                                    ${isDownloaded ? 'disabled' : ''}>
+                                ${isDownloaded ? '📁 In Library' : '📥 Download'}
+                            </button>
                         </div>
                     </div>
-                    <div class="youtube-result-actions">
-                        <button class="download-btn" id="download-${result.videoId}" onclick="downloadFromYouTube('${result.videoId}', '${escapeHtml(result.title)}')">
-                            📥 Download
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        // Helper function to check if a song is already downloaded
+        function checkIfSongAlreadyDownloaded(title) {
+            if (!musicQueue || musicQueue.length === 0) return false;
+
+            const sanitizedTitle = title.toLowerCase().replace(/\s+/g, ' ').trim();
+
+            return musicQueue.some(file => {
+                const fileName = file.originalName.toLowerCase().replace(/\s+/g, ' ').trim();
+                return fileName.includes(sanitizedTitle) || sanitizedTitle.includes(fileName);
+            });
         }
 
         let downloadingVideoId = null;
@@ -1997,12 +2061,9 @@
                         updatePlayButton();
                     }
 
-                    updateMusicGrid();
-                    // Also update the music list if it's visible
-                    const musicPage = document.getElementById('musicPage');
-                    if (musicPage && !musicPage.classList.contains('hidden')) {
-                        loadMusicList(document.getElementById('localMusicSearch').value);
-                    }
+                    updateHomeMusicGrid();
+                    // Always update the music list
+                    loadMusicList(document.getElementById('localMusicSearch').value);
                 } else {
                     throw new Error(data.error || 'Delete failed');
                 }
@@ -2040,7 +2101,11 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    logActivity(`✅ Downloaded: ${data.filename}`, 'system');
+                    if (data.alreadyExists) {
+                        logActivity(`📁 File already exists: ${data.originalName}`, 'system');
+                    } else {
+                        logActivity(`✅ Downloaded: ${data.filename}`, 'system');
+                    }
 
                     // Refresh the music library after a short delay
                     setTimeout(() => {
@@ -2176,7 +2241,7 @@
         function loadMusicList(searchQuery = '') {
             try {
                 const musicList = document.getElementById('musicList');
-                musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Loading music library...</div>';
+                musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">Loading music library...</div>';
 
                 fetch('/api/music')
                     .then(res => res.json())
@@ -2190,7 +2255,7 @@
                         }
 
                         if (filteredFiles.length === 0) {
-                            musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No music files found</div>';
+                            musicList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">No music files found</div>';
                             return;
                         }
 
@@ -2244,7 +2309,7 @@
         function loadUsersDetailedList() {
             try {
                 const usersDetailedList = document.getElementById('usersDetailedList');
-                usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">Loading users...</div>';
+                usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">Loading users...</div>';
 
                 // Request current users from room
                 socket.emit('get-users');
@@ -2259,7 +2324,7 @@
                 const usersDetailedList = document.getElementById('usersDetailedList');
 
                 if (users.length === 0) {
-                    usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--spotify-text-muted);">No users connected</div>';
+                    usersDetailedList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--shubhtej-text-muted);">No users connected</div>';
                     return;
                 }
 
@@ -2307,7 +2372,7 @@
             initializeAudioPlayer();
 
             // Add initial activity
-            logActivity('🚀 Welcome to Spotify Room! All activities are shared.', 'system');
+            logActivity('🚀 Welcome to ShubhTej Room! All activities are shared.', 'system');
 
             // Focus on username input
             document.getElementById('usernameInput').focus();
@@ -2364,6 +2429,23 @@
             // Refresh music library button
             document.getElementById('refreshMusicBtn').addEventListener('click', () => {
                 loadMusicList();
+                loadMusic();
+                logActivity('🔄 Refreshed music library', 'system');
+            });
+
+            // Home page local music search
+            document.getElementById('localMusicSearchHome').addEventListener('input', (e) => {
+                updateHomeMusicGrid(e.target.value);
+            });
+
+            document.getElementById('localMusicSearchHome').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    updateHomeMusicGrid(e.target.value);
+                }
+            });
+
+            // Home page refresh button
+            document.getElementById('refreshMusicBtnHome').addEventListener('click', () => {
                 loadMusic();
                 logActivity('🔄 Refreshed music library', 'system');
             });

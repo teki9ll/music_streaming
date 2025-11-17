@@ -13,7 +13,7 @@ A real-time music player application that allows hosts to control music playback
 - **Multiple Hosts**: Grant co-host permissions to trusted users
 
 ### 🎨 User Interface
-- **Spotify-like Design**: Modern, dark theme interface
+- **ShubhTej-like Design**: Modern, light pink theme interface
 - **Responsive Layout**: Works on desktop and mobile devices
 - **Drag & Drop Upload**: Easy music file upload
 - **Real-time Updates**: Live updates for users and playback status
@@ -134,7 +134,7 @@ music_streaming/
 ├── README.md             # This file
 ├── public/               # Frontend files
 │   ├── index.html        # Main HTML page
-│   ├── style.css         # Styling (Spotify-like theme)
+│   ├── style.css         # Styling (ShubhTej-like theme)
 │   └── app.js           # Frontend JavaScript
 └── music/               # Uploaded music files directory
 ```

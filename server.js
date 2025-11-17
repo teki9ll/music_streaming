@@ -336,6 +336,28 @@ app.post('/api/youtube/download', async (req, res) => {
       return res.status(400).json({ error: 'Video ID is required' });
     }
 
+    // Check if file with similar title already exists
+    const musicDir = path.join(__dirname, 'music');
+    const existingFiles = fs.readdirSync(musicDir);
+    const sanitizedTitle = sanitizeFilename(title).toLowerCase().replace(/\s+/g, ' ').trim();
+
+    const duplicateFile = existingFiles.find(file => {
+      const fileWithoutTimestamp = file.replace(/^\d+-/, '').toLowerCase().replace(/\s+/g, ' ').trim();
+      return fileWithoutTimestamp.includes(sanitizedTitle) || sanitizedTitle.includes(fileWithoutTimestamp);
+    });
+
+    if (duplicateFile) {
+      const stats = fs.statSync(path.join(musicDir, duplicateFile));
+      return res.json({
+        filename: duplicateFile,
+        originalName: duplicateFile.replace(/^\d+-/, ''),
+        url: `/music/${duplicateFile}`,
+        size: stats.size,
+        addedAt: stats.mtime.toISOString(),
+        alreadyExists: true
+      });
+    }
+
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const filename = `${Date.now()}-${sanitizeFilename(title)}.mp3`;
     const outputPath = path.join(__dirname, 'music', filename);
